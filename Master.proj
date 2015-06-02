@@ -78,17 +78,28 @@
   <Target Name="Package" DependsOnTargets="Test">
     <MakeDir Directories="$(PackageFolder)" Condition="!Exists('$(PackageFolder)')" />
 
+    <ItemGroup>
+        <SourceFile Include="$(SourceFolder)\Simple.Logger\Logger.cs" />
+        <SourceFile Include="$(SourceFolder)\Simple.Logger.NLog\NLogWriter.cs" />
+        <SourceFile Include="$(SourceFolder)\Simple.Logger.log4net\Log4NetWriter.cs" />
+    </ItemGroup>
+    
     <!-- create secure.config -->
-    <Copy SourceFiles="$(SourceFolder)\Simple.Logger\Logger.cs"
-          DestinationFiles="$(PackageFolder)\Logger.cs.pp" />
+    <Copy SourceFiles="@(SourceFile)"
+          DestinationFiles="@(SourceFile->'$(PackageFolder)\%(Filename)%(Extension).pp')" />
+
+    
+    <ItemGroup>
+        <UpdateFile Include="$(PackageFolder)\*.pp" />
+    </ItemGroup>
+    
+    <!-- replace namespace-->
+    <FileUpdate Files="@(UpdateFile)"
+                Regex="namespace Simple.Logger"
+                ReplacementText="namespace $rootnamespace$.Logging" />
 
     <MakeDir Directories="$(BuildFolder)" Condition="!EXISTS($(BuildFolder))" />
 
-    <!-- replace namespace-->
-    <FileUpdate Files="$(PackageFolder)\Logger.cs.pp"
-                Regex="namespace Simple.Logger"
-                ReplacementText="namespace $rootnamespace$.Logging" />
-                
     <!-- nuget package -->
     <ItemGroup>
       <NuGetFiles Include="$(DeployFolder)\*.nuspec"/>
