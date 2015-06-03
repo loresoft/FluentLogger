@@ -51,6 +51,39 @@ Writing error message.
             .Write();
     }
     
+Using thread-local properties.
+
+    public bool Run(int jobId)
+    {
+        try
+        {
+            Logger.ThreadProperties.Set("Job", jobId);
+
+            // all log writes on current thread will now include a Job property
+            Logger.Trace()
+                .Message("Starting Work ...")
+                .Write();
+
+            // DO WORK
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error()
+                .Message("Error: ", ex.Message)
+                .Exception(ex)
+                .Write();
+
+            return false;
+        }
+        finally
+        {
+            // clear Job property for this thread
+            Logger.ThreadProperties.Remove("Job");
+        }
+    }
+
 ## NLog Integration
 
 To intergrate Simple.Logger with NLog, install the `Simple.Logger.NLog` source code nugget package.  
