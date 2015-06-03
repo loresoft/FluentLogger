@@ -50,3 +50,23 @@ Writing error message.
             .Property("Test", "ErrorWrite")
             .Write();
     }
+    
+## NLog Integration
+
+To intergrate Simple.Logger with NLog, install the `Simple.Logger.NLog` source code nugget package.  
+
+    PM> Install-Package Simple.Logger.NLog
+
+Then register the adapter with Logger on application startup as follows.
+
+    Logger.RegisterWriter(NLogWriter.WriteLog);
+
+## log4net Integration
+
+To intergrate Simple.Logger with log4net, install the `Simple.Logger.log4net` source code nugget package.  
+
+    PM> Install-Package Simple.Logger.log4net
+
+Then register the adapter with Logger on application startup as follows.
+
+    Logger.RegisterWriter(Log4NetWriter.WriteLog);
