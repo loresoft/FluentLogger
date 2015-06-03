@@ -82,19 +82,19 @@ namespace Simple.Logger.Tests
             {
                 int k = 41;
 
-                Logger.ThreadProperties["K"] = k.ToString();
+                using (var state = Logger.ThreadProperties.Set("K", k))
+                {
+
+                    var builder = Logger.Info();
+
+                    builder
+                        .Message("Sample informational message, k={0}, l={1}", k, l)
+                        .Property("Test", "Tesing properties");
 
 
-                var builder = Logger.Info();
+                    d1 = builder.LogData;
 
-                builder
-                    .Message("Sample informational message, k={0}, l={1}", k, l)
-                    .Property("Test", "Tesing properties");
-
-
-                d1 = builder.LogData;
-
-                Logger.ThreadProperties.Remove("K");
+                }
 
                 w1.Set();
             });
@@ -104,7 +104,7 @@ namespace Simple.Logger.Tests
             {
                 int k = 42;
 
-                Logger.ThreadProperties["K"] = k.ToString();
+                Logger.ThreadProperties.Set("K", k);
 
 
                 var builder = Logger.Info();

@@ -622,4 +622,66 @@ namespace Simple.Logger
 
     }
 
+    /// <summary>
+    /// Extension methods for logging
+    /// </summary>
+    public static class LoggerExtensions
+    {
+        /// <summary>
+        /// Sets the dictionary key to the specified value. 
+        /// </summary>
+        /// <param name="dictionary">The dictionary to update.</param>
+        /// <param name="key">The key to update.</param>
+        /// <param name="value">The value to use.</param>
+        /// <returns>A dispoable action that removed the key on dispose.</returns>
+        public static IDisposable Set(this IDictionary<string, string> dictionary, string key, string value)
+        {
+            if (dictionary == null)
+                throw new ArgumentNullException("dictionary");
+            if (key == null)
+                throw new ArgumentNullException("key");
+
+            dictionary[key] = value;
+
+            return new DisposeAction(() => dictionary.Remove(key));
+        }
+
+        /// <summary>
+        /// Sets the dictionary key to the specified value. 
+        /// </summary>
+        /// <param name="dictionary">The dictionary to update.</param>
+        /// <param name="key">The key to update.</param>
+        /// <param name="value">The value to use.</param>
+        /// <returns>A dispoable action that removed the key on dispose.</returns>
+        public static IDisposable Set(this IDictionary<string, string> dictionary, string key, object value)
+        {
+            string v = value != null ? Convert.ToString(value) : null;
+            return Set(dictionary, key, v);
+        }
+    }
+
+    /// <summary>
+    /// A class that will call an <see cref="Action"/> when Disposed.
+    /// </summary>
+    public class DisposeAction : IDisposable
+    {
+        private readonly Action _exitAction;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DisposeAction"/> class.
+        /// </summary>
+        /// <param name="exitAction">The exit action.</param>
+        public DisposeAction(Action exitAction)
+        {
+            _exitAction = exitAction;
+        }
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
+        void IDisposable.Dispose()
+        {
+            _exitAction.Invoke();
+        }
+    }
 }
