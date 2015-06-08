@@ -81,83 +81,91 @@ namespace Simple.Logger
         /// Start a fluent <see cref="LogBuilder" /> with the specified <see cref="LogLevel" />.
         /// </summary>
         /// <param name="logLevel">The log level.</param>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
-        public static LogBuilder Log(LogLevel logLevel)
+        public static LogBuilder Log(LogLevel logLevel, [CallerFilePath]string callerFilePath = null)
         {
-            return CreateBuilder(logLevel);
+            return CreateBuilder(logLevel, callerFilePath);
         }
 
         /// <summary>
         /// Start a fluent <see cref="LogBuilder" /> with the computed <see cref="LogLevel" />.
         /// </summary>
         /// <param name="logLevelFactory">The log level factory.</param>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
-        public static LogBuilder Log(Func<LogLevel> logLevelFactory)
+        public static LogBuilder Log(Func<LogLevel> logLevelFactory, [CallerFilePath]string callerFilePath = null)
         {
             var logLevel = (logLevelFactory != null) 
                 ? logLevelFactory() 
                 : LogLevel.Debug;
 
-            return CreateBuilder(logLevel);
+            return CreateBuilder(logLevel, callerFilePath);
         }
 
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Trace"/> logger.
         /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Trace()
+        public static LogBuilder Trace([CallerFilePath]string callerFilePath = null)
         {
-            return CreateBuilder(LogLevel.Trace);
+            return CreateBuilder(LogLevel.Trace, callerFilePath);
         }
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Debug"/> logger.
         /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Debug()
+        public static LogBuilder Debug([CallerFilePath]string callerFilePath = null)
         {
-            return CreateBuilder(LogLevel.Debug);
+            return CreateBuilder(LogLevel.Debug, callerFilePath);
         }
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Info"/> logger.
         /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Info()
+        public static LogBuilder Info([CallerFilePath]string callerFilePath = null)
         {
-            return CreateBuilder(LogLevel.Info);
+            return CreateBuilder(LogLevel.Info, callerFilePath);
         }
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Warn"/> logger.
         /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Warn()
+        public static LogBuilder Warn([CallerFilePath]string callerFilePath = null)
         {
-            return CreateBuilder(LogLevel.Warn);
+            return CreateBuilder(LogLevel.Warn, callerFilePath);
         }
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Error"/> logger.
         /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Error()
+        public static LogBuilder Error([CallerFilePath]string callerFilePath = null)
         {
-            return CreateBuilder(LogLevel.Error);
+            return CreateBuilder(LogLevel.Error, callerFilePath);
         }
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Fatal"/> logger.
         /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Fatal()
+        public static LogBuilder Fatal([CallerFilePath]string callerFilePath = null)
         {
-            return CreateBuilder(LogLevel.Fatal);
+            return CreateBuilder(LogLevel.Fatal, callerFilePath);
         }
 
 
@@ -183,10 +191,13 @@ namespace Simple.Logger
             System.Diagnostics.Debug.WriteLine(logData);
         }
 
-        private static LogBuilder CreateBuilder(LogLevel logLevel)
+        private static LogBuilder CreateBuilder(LogLevel logLevel, string callerFilePath)
         {
+            string name = LoggerExtensions.GetFileNameWithoutExtension(callerFilePath ?? string.Empty);
+
             var writer = ResolveWriter();
             var builder = new LogBuilder(logLevel, writer);
+            builder.Logger(name);
 
             MergeProperties(builder);
 
@@ -327,7 +338,7 @@ namespace Simple.Logger
             {
                 message
                     .Append("[")
-                    .Append(GetFileName(FilePath))
+                    .Append(LoggerExtensions.GetFileName(FilePath))
                     .Append(" ")
                     .Append(MemberName)
                     .Append("()")
@@ -345,12 +356,6 @@ namespace Simple.Logger
                 message.Append(" ").Append(Exception);
 
             return message.ToString();
-        }
-
-        private string GetFileName(string filePath)
-        {
-            var parts = filePath.Split('\\', '/');
-            return parts.LastOrDefault();
         }
     }
 
@@ -657,6 +662,25 @@ namespace Simple.Logger
         {
             string v = value != null ? Convert.ToString(value) : null;
             return Set(dictionary, key, v);
+        }
+
+        public static string GetFileName(string filePath)
+        {
+            var parts = filePath.Split('\\', '/');
+            return parts.LastOrDefault();
+        }
+
+        public static string GetFileNameWithoutExtension(string path)
+        {
+            path = GetFileName(path);
+            if (path == null)
+                return null;
+
+            int length;
+            if ((length = path.LastIndexOf('.')) == -1)
+                return path;
+
+            return path.Substring(0, length);
         }
     }
 

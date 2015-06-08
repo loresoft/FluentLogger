@@ -89,7 +89,7 @@ namespace Simple.Logger.Tests
 
                     builder
                         .Message("Sample informational message, k={0}, l={1}", k, l)
-                        .Property("Test", "Tesing properties");
+                        .Property("Test", "Testing properties");
 
 
                     d1 = builder.LogData;
@@ -111,7 +111,7 @@ namespace Simple.Logger.Tests
 
                 builder
                     .Message("Sample informational message, k={0}, l={1}", k, l)
-                    .Property("Test", "Tesing properties");
+                    .Property("Test", "Testing properties");
 
 
                 d2 = builder.LogData;
