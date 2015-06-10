@@ -13,6 +13,7 @@
     <copyright>Copyright (c) 2015, LoreSoft</copyright>
     <language>en-US</language>
     <tags>log logging log4net</tags>
+    <developmentDependency>true</developmentDependency>
   </metadata>
   <files>
     <file src="Logging\Log4NetWriter.cs.pp" target="content\Logging\Log4NetWriter.cs.pp" />

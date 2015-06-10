@@ -13,6 +13,7 @@
     <copyright>Copyright (c) 2015, LoreSoft</copyright>
     <language>en-US</language>
     <tags>log logging</tags>
+    <developmentDependency>true</developmentDependency>
   </metadata>
   <files>
     <file src="Logging\Logger.cs.pp" target="content\Logging\Logger.cs.pp" />

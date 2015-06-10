@@ -13,6 +13,7 @@
     <copyright>Copyright (c) 2015, LoreSoft</copyright>
     <language>en-US</language>
     <tags>log logging NLog</tags>
+    <developmentDependency>true</developmentDependency>
   </metadata>
   <files>
     <file src="Logging\NLogWriter.cs.pp" target="content\Logging\NLogWriter.cs.pp" />
