@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -33,8 +34,10 @@ namespace Simple.Logger
     /// </summary>
     public static class Logger
     {
-        private static Action<LogData> _logWriter;
         private static readonly object _writerLock;
+        private static Action<LogData> _logAction;
+        private static ILogWriter _logWriter;
+        private static bool _hasSearched;
 
         private static readonly ThreadLocal<IDictionary<string, string>> _threadProperties;
         private static readonly Lazy<IDictionary<string, string>> _globalProperties;
@@ -45,7 +48,8 @@ namespace Simple.Logger
         static Logger()
         {
             _writerLock = new object();
-            _logWriter = DebugWrite;
+            _logAction = DebugWrite;
+            _hasSearched = false;
 
             _globalProperties = new Lazy<IDictionary<string, string>>(CreateGlobal);
             _threadProperties = new ThreadLocal<IDictionary<string, string>>(CreateLocal);
@@ -100,8 +104,8 @@ namespace Simple.Logger
         /// </returns>
         public static LogBuilder Log(Func<LogLevel> logLevelFactory, [CallerFilePath]string callerFilePath = null)
         {
-            var logLevel = (logLevelFactory != null) 
-                ? logLevelFactory() 
+            var logLevel = (logLevelFactory != null)
+                ? logLevelFactory()
                 : LogLevel.Debug;
 
             return CreateBuilder(logLevel, callerFilePath);
@@ -176,14 +180,68 @@ namespace Simple.Logger
         public static void RegisterWriter(Action<LogData> writer)
         {
             lock (_writerLock)
-                _logWriter = writer;
+            {
+                _hasSearched = true;
+                _logAction = writer;
+            }
         }
 
+        /// <summary>
+        /// Registers a ILogWriter to write logs to.
+        /// </summary>
+        /// <param name="writer">The ILogWriter to write logs to.</param>
+        public static void RegisterWriter<TWriter>(TWriter writer) 
+            where TWriter : ILogWriter
+        {
+            lock (_writerLock)
+            {
+                _hasSearched = true;
+                _logWriter = writer;
+            }
+        }
 
         private static Action<LogData> ResolveWriter()
         {
             lock (_writerLock)
-                return _logWriter;
+            {
+                SearchWriter();
+                if (_logWriter != null)
+                    return _logWriter.WriteLog;
+
+                return _logAction ?? DebugWrite;
+            }
+        }
+
+        private static void SearchWriter()
+        {
+            if (_hasSearched)
+                return;
+
+            _hasSearched = true;
+
+            //search all assemblies for ILogWriter
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var a in assemblies)
+            {
+                Type[] types;
+
+                try
+                {
+                    types = a.GetExportedTypes();
+                }
+                catch (ReflectionTypeLoadException e)
+                {
+                    types = e.Types.Where(t => t != null).ToArray();
+                }
+
+                var writerType = typeof(ILogWriter);
+                var type = types.FirstOrDefault(t => !t.IsAbstract && writerType.IsAssignableFrom(t));
+                if (type == null)
+                    continue;
+
+                _logWriter = Activator.CreateInstance(type) as ILogWriter;
+                return;
+            }
         }
 
         private static void DebugWrite(LogData logData)
@@ -707,5 +765,17 @@ namespace Simple.Logger
         {
             _exitAction.Invoke();
         }
+    }
+
+    /// <summary>
+    /// An interface defining a log writer.
+    /// </summary>
+    public interface ILogWriter
+    {
+        /// <summary>
+        /// Writes the specified LogData to the underlying logger.
+        /// </summary>
+        /// <param name="logData">The log data.</param>
+        void WriteLog(LogData logData);
     }
 }

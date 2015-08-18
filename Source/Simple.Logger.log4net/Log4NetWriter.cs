@@ -63,4 +63,19 @@ namespace Simple.Logger
                 errorAction(message, logData.Exception);
         }
     }
+
+    /// <summary>
+    /// log4net Log adapter
+    /// </summary>
+    public class Log4NetAdapter : ILogWriter
+    {
+        /// <summary>
+        /// Writes the log.
+        /// </summary>
+        /// <param name="logData">The log data.</param>
+        public void WriteLog(LogData logData)
+        {
+            Log4NetWriter.WriteLog(logData);
+        }
+    }
 }
