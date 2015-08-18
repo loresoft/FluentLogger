@@ -1,4 +1,5 @@
 version: 1.1.0.{build}
+os: Visual Studio 2015
 environment:
   Major: 1
   Minor: 1
@@ -8,7 +9,7 @@ before_build:
 - .\bootstrap.cmd
 build:
   project: master.proj
-  verbosity: minimal
+  verbosity: normal
 test: off
 artifacts:
 - path: '.\Build\*.nupkg'
