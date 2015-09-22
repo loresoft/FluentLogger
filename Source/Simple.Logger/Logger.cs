@@ -30,17 +30,81 @@ namespace Simple.Logger
     }
 
     /// <summary>
-    /// A simple logging class
+    /// A logger <see langword="interface"/> for starting log messages.
     /// </summary>
-    public static class Logger
+    public interface ILogger
+    {
+        /// <summary>
+        /// Start a fluent <see cref="LogBuilder" /> with the specified <see cref="LogLevel" />.
+        /// </summary>
+        /// <param name="logLevel">The log level.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder Log(LogLevel logLevel);
+
+        /// <summary>
+        /// Start a fluent <see cref="LogBuilder" /> with the computed <see cref="LogLevel" />.
+        /// </summary>
+        /// <param name="logLevelFactory">The log level factory.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder Log(Func<LogLevel> logLevelFactory);
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Trace"/> logger.
+        /// </summary>
+        /// <returns>A fluent Logger instance.</returns>
+        ILogBuilder Trace();
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Debug"/> logger.
+        /// </summary>
+        /// <returns>A fluent Logger instance.</returns>
+        ILogBuilder Debug();
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Info"/> logger.
+        /// </summary>
+        /// <returns>A fluent Logger instance.</returns>
+        ILogBuilder Info();
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Warn"/> logger.
+        /// </summary>
+        /// <returns>A fluent Logger instance.</returns>
+        ILogBuilder Warn();
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Error"/> logger.
+        /// </summary>
+        /// <returns>A fluent Logger instance.</returns>
+        ILogBuilder Error();
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Fatal"/> logger.
+        /// </summary>
+        /// <returns>A fluent Logger instance.</returns>
+        ILogBuilder Fatal();
+    }
+
+    /// <summary>
+    /// A logger class for starting log messages.
+    /// </summary>
+    public sealed class Logger : ILogger
     {
         private static readonly object _writerLock;
         private static Action<LogData> _logAction;
         private static ILogWriter _logWriter;
         private static bool _hasSearched;
 
+        // only create if used
         private static readonly ThreadLocal<IDictionary<string, string>> _threadProperties;
         private static readonly Lazy<IDictionary<string, string>> _globalProperties;
+
+        private readonly Lazy<IDictionary<string, object>> _properties;
+
 
         /// <summary>
         /// Initializes the <see cref="Logger"/> class.
@@ -53,6 +117,14 @@ namespace Simple.Logger
 
             _globalProperties = new Lazy<IDictionary<string, string>>(CreateGlobal);
             _threadProperties = new ThreadLocal<IDictionary<string, string>>(CreateLocal);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Logger"/> class.
+        /// </summary>
+        public Logger()
+        {
+            _properties = new Lazy<IDictionary<string, object>>(() => new Dictionary<string, object>());
         }
 
 
@@ -82,6 +154,27 @@ namespace Simple.Logger
 
 
         /// <summary>
+        /// Gets the logger initial default properties dictionary.  All values are copied to each log.
+        /// </summary>
+        /// <value>
+        /// The logger initial default properties dictionary.
+        /// </value>
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        public IDictionary<string, object> Properties
+        {
+            get { return _properties.Value; }
+        }
+
+        /// <summary>
+        /// Gets the logger name.
+        /// </summary>
+        /// <value>
+        /// The logger name.
+        /// </value>
+        public string Name { get; set; }
+
+
+        /// <summary>
         /// Start a fluent <see cref="LogBuilder" /> with the specified <see cref="LogLevel" />.
         /// </summary>
         /// <param name="logLevel">The log level.</param>
@@ -89,8 +182,40 @@ namespace Simple.Logger
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
-        public static LogBuilder Log(LogLevel logLevel, [CallerFilePath]string callerFilePath = null)
+        public static ILogBuilder Log(LogLevel logLevel, [CallerFilePath]string callerFilePath = null)
         {
+            return CreateBuilder(logLevel, callerFilePath);
+        }
+
+        /// <summary>
+        /// Start a fluent <see cref="LogBuilder" /> with the specified <see cref="LogLevel" />.
+        /// </summary>
+        /// <param name="logLevel">The log level.</param>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder ILogger.Log(LogLevel logLevel)
+        {
+            var builder = Log(logLevel);
+            return MergeDefaults(builder);
+        }
+
+
+        /// <summary>
+        /// Start a fluent <see cref="LogBuilder" /> with the computed <see cref="LogLevel" />.
+        /// </summary>
+        /// <param name="logLevelFactory">The log level factory.</param>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        public static ILogBuilder Log(Func<LogLevel> logLevelFactory, [CallerFilePath]string callerFilePath = null)
+        {
+            var logLevel = (logLevelFactory != null)
+                ? logLevelFactory()
+                : LogLevel.Debug;
+
             return CreateBuilder(logLevel, callerFilePath);
         }
 
@@ -102,13 +227,10 @@ namespace Simple.Logger
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
-        public static LogBuilder Log(Func<LogLevel> logLevelFactory, [CallerFilePath]string callerFilePath = null)
+        ILogBuilder ILogger.Log(Func<LogLevel> logLevelFactory)
         {
-            var logLevel = (logLevelFactory != null)
-                ? logLevelFactory()
-                : LogLevel.Debug;
-
-            return CreateBuilder(logLevel, callerFilePath);
+            var builder = Log(logLevelFactory);
+            return MergeDefaults(builder);
         }
 
 
@@ -117,59 +239,142 @@ namespace Simple.Logger
         /// </summary>
         /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Trace([CallerFilePath]string callerFilePath = null)
+        public static ILogBuilder Trace([CallerFilePath]string callerFilePath = null)
         {
             return CreateBuilder(LogLevel.Trace, callerFilePath);
         }
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Trace" /> logger.
+        /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder ILogger.Trace()
+        {
+            var builder = Trace();
+            return MergeDefaults(builder);
+        }
+
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Debug"/> logger.
         /// </summary>
         /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Debug([CallerFilePath]string callerFilePath = null)
+        public static ILogBuilder Debug([CallerFilePath]string callerFilePath = null)
         {
             return CreateBuilder(LogLevel.Debug, callerFilePath);
         }
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Debug" /> logger.
+        /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder ILogger.Debug()
+        {
+            var builder = Debug();
+            return MergeDefaults(builder);
+        }
+
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Info"/> logger.
         /// </summary>
         /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Info([CallerFilePath]string callerFilePath = null)
+        public static ILogBuilder Info([CallerFilePath]string callerFilePath = null)
         {
             return CreateBuilder(LogLevel.Info, callerFilePath);
         }
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Info" /> logger.
+        /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder ILogger.Info()
+        {
+            var builder = Info();
+            return MergeDefaults(builder);
+        }
+
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Warn"/> logger.
         /// </summary>
         /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Warn([CallerFilePath]string callerFilePath = null)
+        public static ILogBuilder Warn([CallerFilePath]string callerFilePath = null)
         {
             return CreateBuilder(LogLevel.Warn, callerFilePath);
         }
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Warn" /> logger.
+        /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder ILogger.Warn()
+        {
+            var builder = Warn();
+            return MergeDefaults(builder);
+        }
+
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Error"/> logger.
         /// </summary>
         /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Error([CallerFilePath]string callerFilePath = null)
+        public static ILogBuilder Error([CallerFilePath]string callerFilePath = null)
         {
             return CreateBuilder(LogLevel.Error, callerFilePath);
         }
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Error" /> logger.
+        /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder ILogger.Error()
+        {
+            var builder = Error();
+            return MergeDefaults(builder);
+        }
+
 
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Fatal"/> logger.
         /// </summary>
         /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>A fluent Logger instance.</returns>
-        public static LogBuilder Fatal([CallerFilePath]string callerFilePath = null)
+        public static ILogBuilder Fatal([CallerFilePath]string callerFilePath = null)
         {
             return CreateBuilder(LogLevel.Fatal, callerFilePath);
+        }
+
+        /// <summary>
+        /// Start a fluent <see cref="LogLevel.Fatal" /> logger.
+        /// </summary>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
+        /// <returns>
+        /// A fluent Logger instance.
+        /// </returns>
+        ILogBuilder ILogger.Fatal()
+        {
+            var builder = Fatal();
+            return MergeDefaults(builder);
         }
 
 
@@ -190,7 +395,7 @@ namespace Simple.Logger
         /// Registers a ILogWriter to write logs to.
         /// </summary>
         /// <param name="writer">The ILogWriter to write logs to.</param>
-        public static void RegisterWriter<TWriter>(TWriter writer) 
+        public static void RegisterWriter<TWriter>(TWriter writer)
             where TWriter : ILogWriter
         {
             lock (_writerLock)
@@ -199,6 +404,52 @@ namespace Simple.Logger
                 _logWriter = writer;
             }
         }
+
+
+        /// <summary>
+        /// Creates a new <see cref="ILogger"/> using the specified fluent <paramref name="builder"/> action.
+        /// </summary>
+        /// <param name="builder">The builder.</param>
+        /// <returns></returns>
+        public static ILogger CreateLogger(Action<LoggerCreateBuilder> builder)
+        {
+            var factory = new Logger();
+            var factoryBuilder = new LoggerCreateBuilder(factory);
+
+            builder(factoryBuilder);
+
+            return factory;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="ILogger"/> using the caller file name as the logger name.
+        /// </summary>
+        /// <returns></returns>
+        public static ILogger CreateLogger([CallerFilePath]string callerFilePath = null)
+        {
+            return new Logger { Name = LoggerExtensions.GetFileNameWithoutExtension(callerFilePath ?? string.Empty) };
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="ILogger" /> using the specified type as the logger name.
+        /// </summary>
+        /// <param name="type">The type to use as the logger name.</param>
+        /// <returns></returns>
+        public static ILogger CreateLogger(Type type)
+        {
+            return new Logger { Name = type.FullName };
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="ILogger" /> using the specified type as the logger name.
+        /// </summary>
+        /// <typeparam name="T">The type to use as the logger name.</typeparam>
+        /// <returns></returns>
+        public static ILogger CreateLogger<T>()
+        {
+            return CreateLogger(typeof(T));
+        }
+
 
         private static Action<LogData> ResolveWriter()
         {
@@ -249,7 +500,7 @@ namespace Simple.Logger
             System.Diagnostics.Debug.WriteLine(logData);
         }
 
-        private static LogBuilder CreateBuilder(LogLevel logLevel, string callerFilePath)
+        private static ILogBuilder CreateBuilder(LogLevel logLevel, string callerFilePath)
         {
             string name = LoggerExtensions.GetFileNameWithoutExtension(callerFilePath ?? string.Empty);
 
@@ -278,7 +529,7 @@ namespace Simple.Logger
             return dictionary;
         }
 
-        private static void MergeProperties(LogBuilder builder)
+        private static void MergeProperties(ILogBuilder builder)
         {
             // copy global properties to current builder only if it has been created
             if (_globalProperties.IsValueCreated)
@@ -289,6 +540,20 @@ namespace Simple.Logger
             if (_threadProperties.IsValueCreated)
                 foreach (var pair in _threadProperties.Value)
                     builder.Property(pair.Key, pair.Value);
+        }
+
+
+        private ILogBuilder MergeDefaults(ILogBuilder builder)
+        {
+            // copy logger name
+            if (!string.IsNullOrEmpty(Name))
+                builder.Logger(Name);
+
+            // copy properties to current builder
+            foreach (var pair in Properties)
+                builder.Property(pair.Key, pair.Value);
+
+            return builder;
         }
     }
 
@@ -420,7 +685,157 @@ namespace Simple.Logger
     /// <summary>
     /// A fluent <see langword="interface"/> to build log messages.
     /// </summary>
-    public sealed class LogBuilder
+    public interface ILogBuilder
+    {
+        /// <summary>
+        /// Gets the log data that is being built.
+        /// </summary>
+        /// <value>
+        /// The log data.
+        /// </value>
+        LogData LogData { get; }
+
+        /// <summary>
+        /// Sets the level of the logging event.
+        /// </summary>
+        /// <param name="logLevel">The level of the logging event.</param>
+        /// <returns></returns>
+        ILogBuilder Level(LogLevel logLevel);
+
+        /// <summary>
+        /// Sets the logger for the logging event.
+        /// </summary>
+        /// <param name="logger">The name of the logger.</param>
+        /// <returns></returns>
+        ILogBuilder Logger(string logger);
+
+        /// <summary>
+        /// Sets the logger name using the generic type.
+        /// </summary>
+        /// <typeparam name="TLogger">The type of the logger.</typeparam>
+        /// <returns></returns>
+        ILogBuilder Logger<TLogger>();
+
+        /// <summary>
+        /// Sets the log message on the logging event.
+        /// </summary>
+        /// <param name="message">The log message for the logging event.</param>
+        /// <returns></returns>
+        ILogBuilder Message(string message);
+
+        /// <summary>
+        /// Sets the log message and parameters for formating on the logging event.
+        /// </summary>
+        /// <param name="format">A composite format string.</param>
+        /// <param name="arg0">The object to format.</param>
+        /// <returns></returns>
+        ILogBuilder Message(string format, object arg0);
+
+        /// <summary>
+        /// Sets the log message and parameters for formating on the logging event.
+        /// </summary>
+        /// <param name="format">A composite format string.</param>
+        /// <param name="arg0">The first object to format.</param>
+        /// <param name="arg1">The second object to format.</param>
+        /// <returns></returns>
+        ILogBuilder Message(string format, object arg0, object arg1);
+
+        /// <summary>
+        /// Sets the log message and parameters for formating on the logging event.
+        /// </summary>
+        /// <param name="format">A composite format string.</param>
+        /// <param name="arg0">The first object to format.</param>
+        /// <param name="arg1">The second object to format.</param>
+        /// <param name="arg2">The third object to format.</param>
+        /// <returns></returns>
+        ILogBuilder Message(string format, object arg0, object arg1, object arg2);
+
+        /// <summary>
+        /// Sets the log message and parameters for formating on the logging event.
+        /// </summary>
+        /// <param name="format">A composite format string.</param>
+        /// <param name="arg0">The first object to format.</param>
+        /// <param name="arg1">The second object to format.</param>
+        /// <param name="arg2">The third object to format.</param>
+        /// <param name="arg3">The fourth object to format.</param>
+        /// <returns></returns>
+        ILogBuilder Message(string format, object arg0, object arg1, object arg2, object arg3);
+
+        /// <summary>
+        /// Sets the log message and parameters for formating on the logging event.
+        /// </summary>
+        /// <param name="format">A composite format string.</param>
+        /// <param name="args">An object array that contains zero or more objects to format.</param>
+        /// <returns></returns>
+        ILogBuilder Message(string format, params object[] args);
+
+        /// <summary>
+        /// Sets the log message and parameters for formating on the logging event.
+        /// </summary>
+        /// <param name="provider">An object that supplies culture-specific formatting information.</param>
+        /// <param name="format">A composite format string.</param>
+        /// <param name="args">An object array that contains zero or more objects to format.</param>
+        /// <returns></returns>
+        ILogBuilder Message(IFormatProvider provider, string format, params object[] args);
+
+        /// <summary>
+        /// Sets a log context property on the logging event.
+        /// </summary>
+        /// <param name="name">The name of the context property.</param>
+        /// <param name="value">The value of the context property.</param>
+        /// <returns></returns>
+        /// <exception cref="System.ArgumentNullException">name</exception>
+        ILogBuilder Property(string name, object value);
+
+        /// <summary>
+        /// Sets the exception information of the logging event.
+        /// </summary>
+        /// <param name="exception">The exception information of the logging event.</param>
+        /// <returns></returns>
+        ILogBuilder Exception(Exception exception);
+
+        /// <summary>
+        /// Writes the log event to the underlying logger.
+        /// </summary>
+        /// <param name="callerMemberName">The method or property name of the caller to the method. This is set at by the compiler.</param>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is set at by the compiler.</param>
+        /// <param name="callerLineNumber">The line number in the source file at which the method is called. This is set at by the compiler.</param>
+        void Write(
+            [CallerMemberName]string callerMemberName = null,
+            [CallerFilePath]string callerFilePath = null,
+            [CallerLineNumber]int callerLineNumber = 0);
+
+        /// <summary>
+        /// Writes the log event to the underlying logger if the condition delegate is true.
+        /// </summary>
+        /// <param name="condition">If condition is true, write log event; otherwise ignore event.</param>
+        /// <param name="callerMemberName">The method or property name of the caller to the method. This is set at by the compiler.</param>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is set at by the compiler.</param>
+        /// <param name="callerLineNumber">The line number in the source file at which the method is called. This is set at by the compiler.</param>
+        void WriteIf(
+            Func<bool> condition,
+            [CallerMemberName]string callerMemberName = null,
+            [CallerFilePath]string callerFilePath = null,
+            [CallerLineNumber]int callerLineNumber = 0);
+
+        /// <summary>
+        /// Writes the log event to the underlying logger if the condition is true.
+        /// </summary>
+        /// <param name="condition">If condition is true, write log event; otherwise ignore event.</param>
+        /// <param name="callerMemberName">The method or property name of the caller to the method. This is set at by the compiler.</param>
+        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is set at by the compiler.</param>
+        /// <param name="callerLineNumber">The line number in the source file at which the method is called. This is set at by the compiler.</param>
+        void WriteIf(
+            bool condition,
+            [CallerMemberName]string callerMemberName = null,
+            [CallerFilePath]string callerFilePath = null,
+            [CallerLineNumber]int callerLineNumber = 0);
+    }
+
+    /// <summary>
+    /// A fluent <see langword="interface"/> to build log messages.
+    /// </summary>
+    public sealed class LogBuilder : ILogBuilder
     {
         private readonly LogData _data;
         private readonly Action<LogData> _writer;
@@ -459,7 +874,7 @@ namespace Simple.Logger
         /// </summary>
         /// <param name="logLevel">The level of the logging event.</param>
         /// <returns></returns>
-        public LogBuilder Level(LogLevel logLevel)
+        public ILogBuilder Level(LogLevel logLevel)
         {
             _data.LogLevel = logLevel;
             return this;
@@ -470,7 +885,7 @@ namespace Simple.Logger
         /// </summary>
         /// <param name="logger">The name of the logger.</param>
         /// <returns></returns>
-        public LogBuilder Logger(string logger)
+        public ILogBuilder Logger(string logger)
         {
             _data.Logger = logger;
 
@@ -482,7 +897,7 @@ namespace Simple.Logger
         /// </summary>
         /// <typeparam name="TLogger">The type of the logger.</typeparam>
         /// <returns></returns>
-        public LogBuilder Logger<TLogger>()
+        public ILogBuilder Logger<TLogger>()
         {
             _data.Logger = typeof(TLogger).FullName;
 
@@ -494,7 +909,7 @@ namespace Simple.Logger
         /// </summary>
         /// <param name="message">The log message for the logging event.</param>
         /// <returns></returns>
-        public LogBuilder Message(string message)
+        public ILogBuilder Message(string message)
         {
             _data.Message = message;
 
@@ -507,7 +922,7 @@ namespace Simple.Logger
         /// <param name="format">A composite format string.</param>
         /// <param name="arg0">The object to format.</param>
         /// <returns></returns>
-        public LogBuilder Message(string format, object arg0)
+        public ILogBuilder Message(string format, object arg0)
         {
             _data.Message = format;
             _data.Parameters = new[] { arg0 };
@@ -522,7 +937,7 @@ namespace Simple.Logger
         /// <param name="arg0">The first object to format.</param>
         /// <param name="arg1">The second object to format.</param>
         /// <returns></returns>
-        public LogBuilder Message(string format, object arg0, object arg1)
+        public ILogBuilder Message(string format, object arg0, object arg1)
         {
             _data.Message = format;
             _data.Parameters = new[] { arg0, arg1 };
@@ -538,7 +953,7 @@ namespace Simple.Logger
         /// <param name="arg1">The second object to format.</param>
         /// <param name="arg2">The third object to format.</param>
         /// <returns></returns>
-        public LogBuilder Message(string format, object arg0, object arg1, object arg2)
+        public ILogBuilder Message(string format, object arg0, object arg1, object arg2)
         {
             _data.Message = format;
             _data.Parameters = new[] { arg0, arg1, arg2 };
@@ -555,7 +970,7 @@ namespace Simple.Logger
         /// <param name="arg2">The third object to format.</param>
         /// <param name="arg3">The fourth object to format.</param>
         /// <returns></returns>
-        public LogBuilder Message(string format, object arg0, object arg1, object arg2, object arg3)
+        public ILogBuilder Message(string format, object arg0, object arg1, object arg2, object arg3)
         {
             _data.Message = format;
             _data.Parameters = new[] { arg0, arg1, arg2, arg3 };
@@ -569,7 +984,7 @@ namespace Simple.Logger
         /// <param name="format">A composite format string.</param>
         /// <param name="args">An object array that contains zero or more objects to format.</param>
         /// <returns></returns>
-        public LogBuilder Message(string format, params object[] args)
+        public ILogBuilder Message(string format, params object[] args)
         {
             _data.Message = format;
             _data.Parameters = args;
@@ -584,7 +999,7 @@ namespace Simple.Logger
         /// <param name="format">A composite format string.</param>
         /// <param name="args">An object array that contains zero or more objects to format.</param>
         /// <returns></returns>
-        public LogBuilder Message(IFormatProvider provider, string format, params object[] args)
+        public ILogBuilder Message(IFormatProvider provider, string format, params object[] args)
         {
             _data.FormatProvider = provider;
             _data.Message = format;
@@ -600,7 +1015,7 @@ namespace Simple.Logger
         /// <param name="value">The value of the context property.</param>
         /// <returns></returns>
         /// <exception cref="System.ArgumentNullException">name</exception>
-        public LogBuilder Property(string name, object value)
+        public ILogBuilder Property(string name, object value)
         {
             if (name == null)
                 throw new ArgumentNullException("name");
@@ -617,7 +1032,7 @@ namespace Simple.Logger
         /// </summary>
         /// <param name="exception">The exception information of the logging event.</param>
         /// <returns></returns>
-        public LogBuilder Exception(Exception exception)
+        public ILogBuilder Exception(Exception exception)
         {
             _data.Exception = exception;
             return this;
@@ -777,5 +1192,77 @@ namespace Simple.Logger
         /// </summary>
         /// <param name="logData">The log data.</param>
         void WriteLog(LogData logData);
+    }
+
+
+    /// <summary>
+    /// A fluent class to build a <see cref="LogFactory"/>.
+    /// </summary>
+    public class LoggerCreateBuilder
+    {
+        private readonly Logger _logger;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LoggerCreateBuilder"/> class.
+        /// </summary>
+        /// <param name="logger">The factory.</param>
+        public LoggerCreateBuilder(Logger logger)
+        {
+            _logger = logger;
+        }
+
+
+        /// <summary>
+        /// Sets the initial logger name for the logging event.
+        /// </summary>
+        /// <param name="logger">The name of the logger.</param>
+        /// <returns></returns>
+        public LoggerCreateBuilder Logger(string logger)
+        {
+            _logger.Name = logger;
+
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the initial logger name using the generic type.
+        /// </summary>
+        /// <typeparam name="TLogger">The type of the logger.</typeparam>
+        /// <returns></returns>
+        public LoggerCreateBuilder Logger<TLogger>()
+        {
+            _logger.Name = typeof(TLogger).FullName;
+
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the initial logger name using the specified type.
+        /// </summary>
+        /// <param name="type">The type of the logger.</param>
+        /// <returns></returns>
+        public LoggerCreateBuilder Logger(Type type)
+        {
+            _logger.Name = type.FullName;
+
+            return this;
+        }
+
+
+        /// <summary>
+        /// Sets an initial  log context property on the logging event.
+        /// </summary>
+        /// <param name="name">The name of the context property.</param>
+        /// <param name="value">The value of the context property.</param>
+        /// <returns></returns>
+        /// <exception cref="System.ArgumentNullException">name</exception>
+        public LoggerCreateBuilder Property(string name, object value)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
+
+            _logger.Properties[name] = value;
+            return this;
+        }
     }
 }

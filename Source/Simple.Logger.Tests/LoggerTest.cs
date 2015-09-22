@@ -130,7 +130,7 @@ namespace Simple.Logger.Tests
 
 
             d1.Should().NotBeNull();
-            
+
             var k1 = d1.Properties["K"];
             k1.Should().Be("41");
 
@@ -145,5 +145,34 @@ namespace Simple.Logger.Tests
             l1.Should().Be(l2);
         }
 
+        [Fact]
+        public void LoggerFromClass()
+        {
+            var logger = Logger.CreateLogger<LoggerTest>();
+
+            int k = 42;
+            int l = 100;
+
+            logger.Info()
+                .Message("Sample informational message from class, k={0}, l={1}", k, l)
+                .Property("Test", "Tesing properties")
+                .Write();
+
+        }
+
+        [Fact]
+        public void LoggerWithDefaultProperty()
+        {
+            var logger = Logger.CreateLogger(c => c.Logger<LoggerTest>().Property("Default", "All Logs Have This"));
+
+            int k = 42;
+            int l = 100;
+
+            logger.Info()
+                .Message("Sample informational message with default property, k={0}, l={1}", k, l)
+                .Property("Test", "Tesing properties")
+                .Write();
+
+        }
     }
 }
