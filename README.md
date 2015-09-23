@@ -27,7 +27,7 @@ Development builds are available on the myget.org feed.  A development build is 
 In your Package Manager settings add the following package source for development builds:
 <http://www.myget.org/F/loresoft/>
 
-## Fluent API
+## Usage
 
 Writing info message via fluent API.
 
@@ -83,6 +83,14 @@ Using thread-local properties.
             Logger.ThreadProperties.Remove("Job");
         }
     }
+
+Class named logger
+
+    public class UserManager
+    {
+        private static readonly ILogger _logger = Logger.CreateLogger<UserManager>();
+    }
+
 
 ## NLog Integration
 
