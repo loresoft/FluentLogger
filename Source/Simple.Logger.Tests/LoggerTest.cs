@@ -132,12 +132,12 @@ namespace Simple.Logger.Tests
             d1.Should().NotBeNull();
 
             var k1 = d1.Properties["K"];
-            k1.Should().Be("41");
+            k1.Should().Be(41);
 
             d2.Should().NotBeNull();
 
             var k2 = d2.Properties["K"];
-            k2.Should().Be("42");
+            k2.Should().Be(42);
 
             var l1 = d1.Properties["L"];
             var l2 = d2.Properties["L"];
