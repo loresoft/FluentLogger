@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Simple.Logger", "Simple.Logger\Simple.Logger.csproj", "{32E0BEA8-2747-4DA3-A3B1-550309B04B02}"
 EndProject
@@ -24,6 +24,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Simple.Logger.Serilog", "Simple.Logger.Serilog\Simple.Logger.Serilog.csproj", "{8754C5ED-7402-4E24-8F01-2EEC2CADD76C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Simple.Logger.Serilog.Tests", "Simple.Logger.Serilog.Tests\Simple.Logger.Serilog.Tests.csproj", "{9644D158-DBEF-4020-9673-B282335C0CE9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Simple.Logger.Portable", "Simple.Logger.Portable\Simple.Logger.Portable.csproj", "{D4806C89-D82C-4962-8E8C-F826A118BA00}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,6 +65,10 @@ Global
 		{9644D158-DBEF-4020-9673-B282335C0CE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9644D158-DBEF-4020-9673-B282335C0CE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9644D158-DBEF-4020-9673-B282335C0CE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4806C89-D82C-4962-8E8C-F826A118BA00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4806C89-D82C-4962-8E8C-F826A118BA00}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4806C89-D82C-4962-8E8C-F826A118BA00}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4806C89-D82C-4962-8E8C-F826A118BA00}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

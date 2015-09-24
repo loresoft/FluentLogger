@@ -5,7 +5,6 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 
@@ -115,11 +114,12 @@ namespace Simple.Logger
         private static readonly object _writerLock;
         private static Action<LogData> _logAction;
         private static ILogWriter _logWriter;
-        private static bool _hasSearched;
 
         // only create if used
+#if !PORTABLE
         private static readonly Lazy<IPropertyContext> _asyncProperties;
         private static readonly ThreadLocal<IPropertyContext> _threadProperties;
+#endif
         private static readonly Lazy<IPropertyContext> _globalProperties;
 
         private readonly Lazy<IPropertyContext> _properties;
@@ -132,11 +132,14 @@ namespace Simple.Logger
         {
             _writerLock = new object();
             _logAction = DebugWrite;
-            _hasSearched = false;
 
             _globalProperties = new Lazy<IPropertyContext>(CreateGlobal);
+#if !PORTABLE
             _threadProperties = new ThreadLocal<IPropertyContext>(CreateLocal);
             _asyncProperties = new Lazy<IPropertyContext>(CreateAsync);
+
+            _logWriter = new TraceLogWriter();
+#endif
         }
 
         /// <summary>
@@ -160,6 +163,7 @@ namespace Simple.Logger
             get { return _globalProperties.Value; }
         }
 
+#if !PORTABLE
         /// <summary>
         /// Gets the thread-local property context.  All values are copied to each log on write.
         /// </summary>
@@ -183,7 +187,7 @@ namespace Simple.Logger
         {
             get { return _asyncProperties.Value; }
         }
-
+#endif
 
         /// <summary>
         /// Gets the logger initial default properties.  All values are copied to each log.
@@ -409,10 +413,7 @@ namespace Simple.Logger
         public static void RegisterWriter(Action<LogData> writer)
         {
             lock (_writerLock)
-            {
-                _hasSearched = true;
                 _logAction = writer;
-            }
         }
 
         /// <summary>
@@ -423,10 +424,7 @@ namespace Simple.Logger
             where TWriter : ILogWriter
         {
             lock (_writerLock)
-            {
-                _hasSearched = true;
                 _logWriter = writer;
-            }
         }
 
 
@@ -479,43 +477,10 @@ namespace Simple.Logger
         {
             lock (_writerLock)
             {
-                SearchWriter();
                 if (_logWriter != null)
                     return _logWriter.WriteLog;
 
                 return _logAction ?? DebugWrite;
-            }
-        }
-
-        private static void SearchWriter()
-        {
-            if (_hasSearched)
-                return;
-
-            _hasSearched = true;
-
-            //search all assemblies for ILogWriter
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (var a in assemblies)
-            {
-                Type[] types;
-
-                try
-                {
-                    types = a.GetExportedTypes();
-                }
-                catch (ReflectionTypeLoadException e)
-                {
-                    types = e.Types.Where(t => t != null).ToArray();
-                }
-
-                var writerType = typeof(ILogWriter);
-                var type = types.FirstOrDefault(t => !t.IsAbstract && writerType.IsAssignableFrom(t));
-                if (type == null)
-                    continue;
-
-                _logWriter = Activator.CreateInstance(type) as ILogWriter;
-                return;
             }
         }
 
@@ -554,6 +519,7 @@ namespace Simple.Logger
             return p.Substring(0, length);
         }
 
+#if !PORTABLE
         private static IPropertyContext CreateAsync()
         {
             var propertyContext = new AsynchronousContext();
@@ -567,12 +533,14 @@ namespace Simple.Logger
 
             return propertyContext;
         }
+#endif
 
         private static IPropertyContext CreateGlobal()
         {
             var propertyContext = new PropertyContext();
+#if !PORTABLE
             propertyContext.Set("MachineName", Environment.MachineName);
-
+#endif
             return propertyContext;
         }
 
@@ -582,6 +550,7 @@ namespace Simple.Logger
             if (_globalProperties.IsValueCreated)
                 _globalProperties.Value.Apply(builder);
 
+#if !PORTABLE
             // copy thread-local properties to current builder only if it has been created
             if (_threadProperties.IsValueCreated)
                 _threadProperties.Value.Apply(builder);
@@ -589,6 +558,7 @@ namespace Simple.Logger
             // copy async properties to current builder only if it has been created
             if (_asyncProperties.IsValueCreated)
                 _asyncProperties.Value.Apply(builder);
+#endif
         }
 
 
@@ -1186,6 +1156,57 @@ namespace Simple.Logger
         void WriteLog(LogData logData);
     }
 
+#if !PORTABLE
+    /// <summary>
+    /// A system trace log writer
+    /// </summary>
+    public class TraceLogWriter : ILogWriter
+    {
+        private readonly static Lazy<TraceSource> _traceSource;
+
+        /// <summary>
+        /// Initializes the <see cref="TraceLogWriter"/> class.
+        /// </summary>
+        static TraceLogWriter()
+        {
+            _traceSource = new Lazy<TraceSource>(() => new TraceSource(typeof(Logger).FullName, SourceLevels.Information));
+        }
+
+        /// <summary>
+        /// Writes the specified LogData to the underlying logger.
+        /// </summary>
+        /// <param name="logData">The log data.</param>
+        public void WriteLog(LogData logData)
+        {
+            var eventType = ToEventType(logData.LogLevel);
+            if (logData.Parameters != null && logData.Parameters.Length > 0)
+                _traceSource.Value.TraceEvent(eventType, 1, logData.Message, logData.Parameters);
+            else
+                _traceSource.Value.TraceEvent(eventType, 1, logData.Message);
+        }
+
+        private TraceEventType ToEventType(LogLevel logLevel)
+        {
+            switch (logLevel)
+            {
+                case LogLevel.Trace:
+                    return TraceEventType.Verbose;
+                case LogLevel.Debug:
+                    return TraceEventType.Verbose;
+                case LogLevel.Info:
+                    return TraceEventType.Information;
+                case LogLevel.Warn:
+                    return TraceEventType.Warning;
+                case LogLevel.Error:
+                    return TraceEventType.Error;
+                case LogLevel.Fatal:
+                    return TraceEventType.Critical;
+                default:
+                    return TraceEventType.Verbose;
+            }
+        }
+    }
+#endif
 
     /// <summary>
     /// A fluent class to build a <see cref="LogFactory"/>.
@@ -1306,24 +1327,11 @@ namespace Simple.Logger
         /// </summary>
         /// <param name="key">The key of the value to set.</param>
         /// <param name="value">The value associated with the specified key. The value will be converted to a string.</param>
-        void Set(string key, object value);
-
-        /// <summary>
-        /// Sets the <paramref name="value"/> associated with the specified <paramref name="key" />.
-        /// </summary>
-        /// <param name="key">The key of the value to set.</param>
-        /// <param name="value">The value associated with the specified key. The value will be converted to a string.</param>
         /// <returns>An <see cref="IDisposable"/> that will remove the key on dispose.</returns>
-        IDisposable Push(string key, object value);
-
-        /// <summary>
-        /// Removes the value with the specified <paramref name="key" /> from the property context.
-        /// </summary>
-        /// <param name="key">The key of the element to remove.</param>
-        /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.</returns>
-        object Pop(string key);
+        IDisposable Set(string key, object value);
     }
 
+#if !PORTABLE
     /// <summary>
     /// A property context that maintains state across asynchronous tasks and call contexts.
     /// </summary>
@@ -1350,7 +1358,7 @@ namespace Simple.Logger
         /// </summary>
         public void Clear()
         {
-            CallContext.FreeNamedDataSlot(_slotName);
+            System.Runtime.Remoting.Messaging.CallContext.FreeNamedDataSlot(_slotName);
         }
 
         /// <summary>
@@ -1432,58 +1440,34 @@ namespace Simple.Logger
         /// </summary>
         /// <param name="key">The key of the value to set.</param>
         /// <param name="value">The value associated with the specified key.</param>
-        public void Set(string key, object value)
+        /// <returns>
+        /// An <see cref="IDisposable" /> that will remove the key on dispose.
+        /// </returns>
+        public IDisposable Set(string key, object value)
         {
-            var dictionary = GetDictionary()
-                ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            var dictionary = GetDictionary() ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
             dictionary[key] = value;
 
             // CallContext value must be immutable, reassign value
             SetDictionary(dictionary);
-        }
-
-        /// <summary>
-        /// Sets the <paramref name="value" /> associated with the specified <paramref name="key" />.
-        /// </summary>
-        /// <param name="key">The key of the value to set.</param>
-        /// <param name="value">The value associated with the specified key.</param>
-        /// <returns>
-        /// An <see cref="IDisposable" /> that will remove the key on dispose.
-        /// </returns>
-        public IDisposable Push(string key, object value)
-        {
-            Set(key, value);
 
             return new DisposeAction(() => Remove(key));
-        }
-
-        /// <summary>
-        /// Removes the value with the specified <paramref name="key" /> from the property context.
-        /// </summary>
-        /// <param name="key">The key of the element to remove.</param>
-        /// <returns>
-        ///   <c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.
-        /// </returns>
-        public object Pop(string key)
-        {
-            var value = Get(key);
-            Remove(key);
-            return value;
         }
 
 
         private IDictionary<string, object> GetDictionary()
         {
-            var data = CallContext.LogicalGetData(_slotName);
+            var data = System.Runtime.Remoting.Messaging.CallContext.LogicalGetData(_slotName);
             return data as IDictionary<string, object>;
         }
 
         private void SetDictionary(IDictionary<string, object> value)
         {
-            CallContext.LogicalSetData(_slotName, value);
+            System.Runtime.Remoting.Messaging.CallContext.LogicalSetData(_slotName, value);
         }
     }
+#endif
 
     /// <summary>
     /// A property context that maintains state in a local dictionary
@@ -1491,6 +1475,15 @@ namespace Simple.Logger
     public class PropertyContext : IPropertyContext
     {
         private readonly Dictionary<string, object> _dictionary;
+
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PropertyContext"/> class.
+        /// </summary>
+        public PropertyContext()
+        {
+            _dictionary = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        }
 
         /// <summary>
         /// Applies the context properties to the specified <paramref name="builder" />.
@@ -1500,14 +1493,6 @@ namespace Simple.Logger
         {
             foreach (var pair in _dictionary)
                 builder.Property(pair.Key, pair.Value);
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="PropertyContext"/> class.
-        /// </summary>
-        public PropertyContext()
-        {
-            _dictionary = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -1575,37 +1560,10 @@ namespace Simple.Logger
         /// <returns>
         /// An <see cref="IDisposable" /> that will remove the key on dispose.
         /// </returns>
-        public void Set(string key, object value)
+        public IDisposable Set(string key, object value)
         {
             _dictionary[key] = value;
-        }
-
-        /// <summary>
-        /// Sets the <paramref name="value" /> associated with the specified <paramref name="key" />.
-        /// </summary>
-        /// <param name="key">The key of the value to set.</param>
-        /// <param name="value">The value associated with the specified key.</param>
-        /// <returns>
-        /// An <see cref="IDisposable" /> that will remove the key on dispose.
-        /// </returns>
-        public IDisposable Push(string key, object value)
-        {
-            Set(key, value);
             return new DisposeAction(() => Remove(key));
-        }
-
-        /// <summary>
-        /// Removes the value with the specified <paramref name="key" /> from the property context.
-        /// </summary>
-        /// <param name="key">The key of the element to remove.</param>
-        /// <returns>
-        ///   <c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.
-        /// </returns>
-        public object Pop(string key)
-        {
-            var value = Get(key);
-            Remove(key);
-            return value;
         }
     }
 }

@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("Simple.Logger.Tests")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Novus Media Inc")]
+[assembly: AssemblyCompany("LoreSoft")]
 [assembly: AssemblyProduct("Simple.Logger.Tests")]
-[assembly: AssemblyCopyright("Copyright © Novus Media Inc 2015")]
+[assembly: AssemblyCopyright("Copyright © LoreSoft 2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

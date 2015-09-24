@@ -82,7 +82,7 @@ namespace Simple.Logger.Tests
             {
                 int k = 41;
 
-                using (var state = Logger.ThreadProperties.Push("K", k))
+                using (var state = Logger.ThreadProperties.Set("K", k))
                 {
 
                     var builder = Logger.Info();
