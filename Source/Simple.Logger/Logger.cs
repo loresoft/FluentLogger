@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 
@@ -34,6 +35,23 @@ namespace Simple.Logger
     /// </summary>
     public interface ILogger
     {
+        /// <summary>
+        /// Gets the logger name.
+        /// </summary>
+        /// <value>
+        /// The logger name.
+        /// </value>
+        string Name { get; }
+
+        /// <summary>
+        /// Gets the logger initial default properties.  All values are copied to each log.
+        /// </summary>
+        /// <value>
+        /// The logger initial default properties.
+        /// </value>
+        IPropertyContext Properties { get; }
+
+
         /// <summary>
         /// Start a fluent <see cref="LogBuilder" /> with the specified <see cref="LogLevel" />.
         /// </summary>
@@ -100,10 +118,11 @@ namespace Simple.Logger
         private static bool _hasSearched;
 
         // only create if used
-        private static readonly ThreadLocal<IDictionary<string, string>> _threadProperties;
-        private static readonly Lazy<IDictionary<string, string>> _globalProperties;
+        private static readonly Lazy<IPropertyContext> _asyncProperties;
+        private static readonly ThreadLocal<IPropertyContext> _threadProperties;
+        private static readonly Lazy<IPropertyContext> _globalProperties;
 
-        private readonly Lazy<IDictionary<string, object>> _properties;
+        private readonly Lazy<IPropertyContext> _properties;
 
 
         /// <summary>
@@ -115,8 +134,9 @@ namespace Simple.Logger
             _logAction = DebugWrite;
             _hasSearched = false;
 
-            _globalProperties = new Lazy<IDictionary<string, string>>(CreateGlobal);
-            _threadProperties = new ThreadLocal<IDictionary<string, string>>(CreateLocal);
+            _globalProperties = new Lazy<IPropertyContext>(CreateGlobal);
+            _threadProperties = new ThreadLocal<IPropertyContext>(CreateLocal);
+            _asyncProperties = new Lazy<IPropertyContext>(CreateAsync);
         }
 
         /// <summary>
@@ -124,43 +144,55 @@ namespace Simple.Logger
         /// </summary>
         public Logger()
         {
-            _properties = new Lazy<IDictionary<string, object>>(() => new Dictionary<string, object>());
+            _properties = new Lazy<IPropertyContext>(() => new PropertyContext());
         }
 
 
         /// <summary>
-        /// Gets the global properties dictionary.  All values are copied to each log on write.
+        /// Gets the global property context.  All values are copied to each log on write.
         /// </summary>
         /// <value>
-        /// The global properties dictionary.
+        /// The global property context.
         /// </value>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        public static IDictionary<string, string> GlobalProperties
+        public static IPropertyContext GlobalProperties
         {
             get { return _globalProperties.Value; }
         }
 
         /// <summary>
-        /// Gets the thread-local properties dictionary.  All values are copied to each log on write.
+        /// Gets the thread-local property context.  All values are copied to each log on write.
         /// </summary>
         /// <value>
-        /// The thread-local properties dictionary.
+        /// The thread-local property context.
         /// </value>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        public static IDictionary<string, string> ThreadProperties
+        public static IPropertyContext ThreadProperties
         {
             get { return _threadProperties.Value; }
         }
 
-
         /// <summary>
-        /// Gets the logger initial default properties dictionary.  All values are copied to each log.
+        /// Gets the property context that maintains state across asynchronous tasks and call contexts. All values are copied to each log on write.
         /// </summary>
         /// <value>
-        /// The logger initial default properties dictionary.
+        /// The asynchronous property context.
         /// </value>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        public IDictionary<string, object> Properties
+        public static IPropertyContext AsyncProperties
+        {
+            get { return _asyncProperties.Value; }
+        }
+
+
+        /// <summary>
+        /// Gets the logger initial default properties.  All values are copied to each log.
+        /// </summary>
+        /// <value>
+        /// The logger initial default properties.
+        /// </value>
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        public IPropertyContext Properties
         {
             get { return _properties.Value; }
         }
@@ -191,7 +223,6 @@ namespace Simple.Logger
         /// Start a fluent <see cref="LogBuilder" /> with the specified <see cref="LogLevel" />.
         /// </summary>
         /// <param name="logLevel">The log level.</param>
-        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
@@ -223,7 +254,6 @@ namespace Simple.Logger
         /// Start a fluent <see cref="LogBuilder" /> with the computed <see cref="LogLevel" />.
         /// </summary>
         /// <param name="logLevelFactory">The log level factory.</param>
-        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
@@ -247,7 +277,6 @@ namespace Simple.Logger
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Trace" /> logger.
         /// </summary>
-        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
@@ -271,7 +300,6 @@ namespace Simple.Logger
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Debug" /> logger.
         /// </summary>
-        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
@@ -295,7 +323,6 @@ namespace Simple.Logger
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Info" /> logger.
         /// </summary>
-        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
@@ -319,7 +346,6 @@ namespace Simple.Logger
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Warn" /> logger.
         /// </summary>
-        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
@@ -343,7 +369,6 @@ namespace Simple.Logger
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Error" /> logger.
         /// </summary>
-        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
@@ -367,7 +392,6 @@ namespace Simple.Logger
         /// <summary>
         /// Start a fluent <see cref="LogLevel.Fatal" /> logger.
         /// </summary>
-        /// <param name="callerFilePath">The full path of the source file that contains the caller. This is the file path at the time of compile.</param>
         /// <returns>
         /// A fluent Logger instance.
         /// </returns>
@@ -427,7 +451,7 @@ namespace Simple.Logger
         /// <returns></returns>
         public static ILogger CreateLogger([CallerFilePath]string callerFilePath = null)
         {
-            return new Logger { Name = LoggerExtensions.GetFileNameWithoutExtension(callerFilePath ?? string.Empty) };
+            return new Logger { Name = GetName(callerFilePath) };
         }
 
         /// <summary>
@@ -502,7 +526,7 @@ namespace Simple.Logger
 
         private static ILogBuilder CreateBuilder(LogLevel logLevel, string callerFilePath)
         {
-            string name = LoggerExtensions.GetFileNameWithoutExtension(callerFilePath ?? string.Empty);
+            string name = GetName(callerFilePath);
 
             var writer = ResolveWriter();
             var builder = new LogBuilder(logLevel, writer);
@@ -513,45 +537,70 @@ namespace Simple.Logger
             return builder;
         }
 
-        private static IDictionary<string, string> CreateLocal()
+        private static string GetName(string path)
         {
-            var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            dictionary.Add("ThreadId", Thread.CurrentThread.ManagedThreadId.ToString(CultureInfo.InvariantCulture));
+            if (path == null)
+                return string.Empty;
 
-            return dictionary;
+            var parts = path.Split('\\', '/');
+            var p = parts.LastOrDefault();
+            if (p == null)
+                return null;
+
+            int length;
+            if ((length = p.LastIndexOf('.')) == -1)
+                return p;
+
+            return p.Substring(0, length);
         }
 
-        private static IDictionary<string, string> CreateGlobal()
+        private static IPropertyContext CreateAsync()
         {
-            var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            dictionary.Add("MachineName", Environment.MachineName);
+            var propertyContext = new AsynchronousContext();
+            return propertyContext;
+        }
 
-            return dictionary;
+        private static IPropertyContext CreateLocal()
+        {
+            var propertyContext = new PropertyContext();
+            propertyContext.Set("ThreadId", Thread.CurrentThread.ManagedThreadId);
+
+            return propertyContext;
+        }
+
+        private static IPropertyContext CreateGlobal()
+        {
+            var propertyContext = new PropertyContext();
+            propertyContext.Set("MachineName", Environment.MachineName);
+
+            return propertyContext;
         }
 
         private static void MergeProperties(ILogBuilder builder)
         {
             // copy global properties to current builder only if it has been created
             if (_globalProperties.IsValueCreated)
-                foreach (var pair in _globalProperties.Value)
-                    builder.Property(pair.Key, pair.Value);
+                _globalProperties.Value.Apply(builder);
 
             // copy thread-local properties to current builder only if it has been created
             if (_threadProperties.IsValueCreated)
-                foreach (var pair in _threadProperties.Value)
-                    builder.Property(pair.Key, pair.Value);
+                _threadProperties.Value.Apply(builder);
+
+            // copy async properties to current builder only if it has been created
+            if (_asyncProperties.IsValueCreated)
+                _asyncProperties.Value.Apply(builder);
         }
 
 
         private ILogBuilder MergeDefaults(ILogBuilder builder)
         {
             // copy logger name
-            if (!string.IsNullOrEmpty(Name))
+            if (!String.IsNullOrEmpty(Name))
                 builder.Logger(Name);
 
             // copy properties to current builder
-            foreach (var pair in Properties)
-                builder.Property(pair.Key, pair.Value);
+            if (_properties.IsValueCreated)
+                _properties.Value.Apply(builder);
 
             return builder;
         }
@@ -661,7 +710,7 @@ namespace Simple.Logger
             {
                 message
                     .Append("[")
-                    .Append(LoggerExtensions.GetFileName(FilePath))
+                    .Append(FilePath)
                     .Append(" ")
                     .Append(MemberName)
                     .Append("()")
@@ -1101,63 +1150,6 @@ namespace Simple.Logger
     }
 
     /// <summary>
-    /// Extension methods for logging
-    /// </summary>
-    public static class LoggerExtensions
-    {
-        /// <summary>
-        /// Sets the dictionary key to the specified value. 
-        /// </summary>
-        /// <param name="dictionary">The dictionary to update.</param>
-        /// <param name="key">The key to update.</param>
-        /// <param name="value">The value to use.</param>
-        /// <returns>A dispoable action that removed the key on dispose.</returns>
-        public static IDisposable Set(this IDictionary<string, string> dictionary, string key, string value)
-        {
-            if (dictionary == null)
-                throw new ArgumentNullException("dictionary");
-            if (key == null)
-                throw new ArgumentNullException("key");
-
-            dictionary[key] = value;
-
-            return new DisposeAction(() => dictionary.Remove(key));
-        }
-
-        /// <summary>
-        /// Sets the dictionary key to the specified value. 
-        /// </summary>
-        /// <param name="dictionary">The dictionary to update.</param>
-        /// <param name="key">The key to update.</param>
-        /// <param name="value">The value to use.</param>
-        /// <returns>A dispoable action that removed the key on dispose.</returns>
-        public static IDisposable Set(this IDictionary<string, string> dictionary, string key, object value)
-        {
-            string v = value != null ? Convert.ToString(value) : null;
-            return Set(dictionary, key, v);
-        }
-
-        public static string GetFileName(string filePath)
-        {
-            var parts = filePath.Split('\\', '/');
-            return parts.LastOrDefault();
-        }
-
-        public static string GetFileNameWithoutExtension(string path)
-        {
-            path = GetFileName(path);
-            if (path == null)
-                return null;
-
-            int length;
-            if ((length = path.LastIndexOf('.')) == -1)
-                return path;
-
-            return path.Substring(0, length);
-        }
-    }
-
-    /// <summary>
     /// A class that will call an <see cref="Action"/> when Disposed.
     /// </summary>
     public class DisposeAction : IDisposable
@@ -1261,8 +1253,359 @@ namespace Simple.Logger
             if (name == null)
                 throw new ArgumentNullException("name");
 
-            _logger.Properties[name] = value;
+            _logger.Properties.Set(name, value);
             return this;
+        }
+    }
+
+    /// <summary>
+    /// An <see langword="interface"/> defining a logger property context.
+    /// </summary>
+    public interface IPropertyContext
+    {
+        /// <summary>
+        /// Applies the context properties to the specified <paramref name="builder"/>.
+        /// </summary>
+        /// <param name="builder">The builder to copy the properties to.</param>
+        void Apply(ILogBuilder builder);
+
+        /// <summary>
+        /// Removes all keys and values from the property context
+        /// </summary>
+        void Clear();
+
+        /// <summary>
+        /// Determines whether the property context contains the specified <paramref name="key"/>.
+        /// </summary>
+        /// <param name="key">The key to locate in the property context.</param>
+        /// <returns><c>true</c> if the property context contains an element with the specified <paramref name="key"/>; otherwise, <c>false</c>.</returns>
+        bool Contains(string key);
+
+        /// <summary>
+        /// Gets the value associated with the specified <paramref name="key"/>.
+        /// </summary>
+        /// <param name="key">The key of the value to get.</param>
+        /// <returns>The value associated with the specified <paramref name="key"/>, if the key is found; otherwise <see langword="null"/>.</returns>
+        object Get(string key);
+
+        /// <summary>
+        /// Gets the keys in the property context.
+        /// </summary>
+        /// <returns>The keys in the property context.</returns>
+        IEnumerable<string> Keys();
+
+        /// <summary>
+        /// Removes the value with the specified <paramref name="key" /> from the property context.
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.</returns>
+        bool Remove(string key);
+
+        /// <summary>
+        /// Sets the <paramref name="value"/> associated with the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key of the value to set.</param>
+        /// <param name="value">The value associated with the specified key. The value will be converted to a string.</param>
+        void Set(string key, object value);
+
+        /// <summary>
+        /// Sets the <paramref name="value"/> associated with the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key of the value to set.</param>
+        /// <param name="value">The value associated with the specified key. The value will be converted to a string.</param>
+        /// <returns>An <see cref="IDisposable"/> that will remove the key on dispose.</returns>
+        IDisposable Push(string key, object value);
+
+        /// <summary>
+        /// Removes the value with the specified <paramref name="key" /> from the property context.
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.</returns>
+        object Pop(string key);
+    }
+
+    /// <summary>
+    /// A property context that maintains state across asynchronous tasks and call contexts.
+    /// </summary>
+    public class AsynchronousContext : IPropertyContext
+    {
+        private readonly string _slotName = Guid.NewGuid().ToString("N");
+
+        /// <summary>
+        /// Applies the context properties to the specified <paramref name="builder" />.
+        /// </summary>
+        /// <param name="builder">The builder to copy the properties to.</param>
+        public void Apply(ILogBuilder builder)
+        {
+            var dictionary = GetDictionary();
+            if (dictionary == null)
+                return;
+
+            foreach (var pair in dictionary)
+                builder.Property(pair.Key, pair.Value);
+        }
+
+        /// <summary>
+        /// Removes all keys and values from the property context
+        /// </summary>
+        public void Clear()
+        {
+            CallContext.FreeNamedDataSlot(_slotName);
+        }
+
+        /// <summary>
+        /// Determines whether the property context contains the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key to locate in the property context.</param>
+        /// <returns>
+        ///   <c>true</c> if the property context contains an element with the specified <paramref name="key" />; otherwise, <c>false</c>.
+        /// </returns>
+        public bool Contains(string key)
+        {
+            var dictionary = GetDictionary();
+            if (dictionary == null)
+                return false;
+
+            return dictionary.ContainsKey(key);
+        }
+
+        /// <summary>
+        /// Gets the value associated with the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key of the value to get.</param>
+        /// <returns>
+        /// The value associated with the specified <paramref name="key" />, if the key is found; otherwise <see langword="null" />.
+        /// </returns>
+        public object Get(string key)
+        {
+            var dictionary = GetDictionary();
+            if (dictionary == null)
+                return null;
+
+            object value;
+            dictionary.TryGetValue(key, out value);
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the keys in the property context.
+        /// </summary>
+        /// <returns>
+        /// The keys in the property context.
+        /// </returns>
+        public IEnumerable<string> Keys()
+        {
+            var dictionary = GetDictionary();
+            if (dictionary == null)
+                return Enumerable.Empty<string>();
+
+            return dictionary.Keys;
+        }
+
+        /// <summary>
+        /// Removes the value with the specified <paramref name="key" /> from the property context.
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <returns>
+        ///   <c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.
+        /// </returns>
+        public bool Remove(string key)
+        {
+            var dictionary = GetDictionary();
+            if (dictionary == null)
+                return false;
+
+            bool removed = dictionary.Remove(key);
+
+            // CallContext value must be immutable, reassign value
+            if (dictionary.Count > 0)
+                SetDictionary(dictionary);
+            else
+                Clear();
+
+            return removed;
+        }
+
+        /// <summary>
+        /// Sets the <paramref name="value" /> associated with the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key of the value to set.</param>
+        /// <param name="value">The value associated with the specified key.</param>
+        public void Set(string key, object value)
+        {
+            var dictionary = GetDictionary()
+                ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+            dictionary[key] = value;
+
+            // CallContext value must be immutable, reassign value
+            SetDictionary(dictionary);
+        }
+
+        /// <summary>
+        /// Sets the <paramref name="value" /> associated with the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key of the value to set.</param>
+        /// <param name="value">The value associated with the specified key.</param>
+        /// <returns>
+        /// An <see cref="IDisposable" /> that will remove the key on dispose.
+        /// </returns>
+        public IDisposable Push(string key, object value)
+        {
+            Set(key, value);
+
+            return new DisposeAction(() => Remove(key));
+        }
+
+        /// <summary>
+        /// Removes the value with the specified <paramref name="key" /> from the property context.
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <returns>
+        ///   <c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.
+        /// </returns>
+        public object Pop(string key)
+        {
+            var value = Get(key);
+            Remove(key);
+            return value;
+        }
+
+
+        private IDictionary<string, object> GetDictionary()
+        {
+            var data = CallContext.LogicalGetData(_slotName);
+            return data as IDictionary<string, object>;
+        }
+
+        private void SetDictionary(IDictionary<string, object> value)
+        {
+            CallContext.LogicalSetData(_slotName, value);
+        }
+    }
+
+    /// <summary>
+    /// A property context that maintains state in a local dictionary
+    /// </summary>
+    public class PropertyContext : IPropertyContext
+    {
+        private readonly Dictionary<string, object> _dictionary;
+
+        /// <summary>
+        /// Applies the context properties to the specified <paramref name="builder" />.
+        /// </summary>
+        /// <param name="builder">The builder to copy the properties to.</param>
+        public void Apply(ILogBuilder builder)
+        {
+            foreach (var pair in _dictionary)
+                builder.Property(pair.Key, pair.Value);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PropertyContext"/> class.
+        /// </summary>
+        public PropertyContext()
+        {
+            _dictionary = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Removes all keys and values from the property context
+        /// </summary>
+        public void Clear()
+        {
+            _dictionary.Clear();
+        }
+
+        /// <summary>
+        /// Determines whether the property context contains the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key to locate in the property context.</param>
+        /// <returns>
+        ///   <c>true</c> if the property context contains an element with the specified <paramref name="key" />; otherwise, <c>false</c>.
+        /// </returns>
+        public bool Contains(string key)
+        {
+            return _dictionary.ContainsKey(key);
+        }
+
+        /// <summary>
+        /// Gets the value associated with the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key of the value to get.</param>
+        /// <returns>
+        /// The value associated with the specified <paramref name="key" />, if the key is found; otherwise <see langword="null" />.
+        /// </returns>
+        public object Get(string key)
+        {
+            object value;
+            _dictionary.TryGetValue(key, out value);
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the keys in the property context.
+        /// </summary>
+        /// <returns>
+        /// The keys in the property context.
+        /// </returns>
+        public IEnumerable<string> Keys()
+        {
+            return _dictionary.Keys;
+        }
+
+        /// <summary>
+        /// Removes the value with the specified <paramref name="key" /> from the property context.
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <returns>
+        ///   <c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.
+        /// </returns>
+        public bool Remove(string key)
+        {
+            return _dictionary.Remove(key);
+        }
+
+        /// <summary>
+        /// Sets the <paramref name="value" /> associated with the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key of the value to set.</param>
+        /// <param name="value">The value associated with the specified key.</param>
+        /// <returns>
+        /// An <see cref="IDisposable" /> that will remove the key on dispose.
+        /// </returns>
+        public void Set(string key, object value)
+        {
+            _dictionary[key] = value;
+        }
+
+        /// <summary>
+        /// Sets the <paramref name="value" /> associated with the specified <paramref name="key" />.
+        /// </summary>
+        /// <param name="key">The key of the value to set.</param>
+        /// <param name="value">The value associated with the specified key.</param>
+        /// <returns>
+        /// An <see cref="IDisposable" /> that will remove the key on dispose.
+        /// </returns>
+        public IDisposable Push(string key, object value)
+        {
+            Set(key, value);
+            return new DisposeAction(() => Remove(key));
+        }
+
+        /// <summary>
+        /// Removes the value with the specified <paramref name="key" /> from the property context.
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <returns>
+        ///   <c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>. This method returns <c>false</c> if key is not found.
+        /// </returns>
+        public object Pop(string key)
+        {
+            var value = Get(key);
+            Remove(key);
+            return value;
         }
     }
 }

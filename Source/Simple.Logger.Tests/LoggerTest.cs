@@ -76,13 +76,13 @@ namespace Simple.Logger.Tests
             LogData d2 = null;
 
             int l = 100;
-            Logger.GlobalProperties["L"] = l.ToString();
+            Logger.GlobalProperties.Set("L", l.ToString());
 
             var t1 = new Thread(o =>
             {
                 int k = 41;
 
-                using (var state = Logger.ThreadProperties.Set("K", k))
+                using (var state = Logger.ThreadProperties.Push("K", k))
                 {
 
                     var builder = Logger.Info();
@@ -174,5 +174,55 @@ namespace Simple.Logger.Tests
                 .Write();
 
         }
+
+        [Fact]
+        public async void LoggerAsyncProperty()
+        {
+            // properties set outside of async/await should be passed into async call
+            Logger.AsyncProperties.Set("Async", 13);
+
+            // thread-local context is lost on async/await
+            Logger.ThreadProperties.Set("Thread", 23);
+
+            LogData d1 = null;
+
+            Func<Task> action = async () =>
+            {
+                await Task.Yield();
+
+                Logger.AsyncProperties.Set("Inner", 97);
+            
+                var v = Logger.AsyncProperties.Get("Async");
+                var t = Logger.ThreadProperties.Get("Thread");
+
+                v.Should().Be(13);
+                t.Should().BeNull();
+
+                var builder = Logger.Info();
+
+                builder
+                    .Message("Sample informational message")
+                    .Property("Test", "Testing properties");
+
+
+                d1 = builder.LogData;
+            };
+            await action();
+
+            // check log data got async property
+            d1.Should().NotBeNull();
+
+            var a1 = d1.Properties["Async"];
+            a1.Should().Be(13);
+
+            // check async property still valid after await
+            var i1 = Logger.AsyncProperties.Get("Async");
+            i1.Should().Be(13);
+
+            var i2 = Logger.AsyncProperties.Get("Inner");
+            i2.Should().Be(97);
+        }
+
+
     }
 }
