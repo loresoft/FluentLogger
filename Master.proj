@@ -81,18 +81,25 @@
     <MakeDir Directories="$(PackageFolder)" Condition="!Exists('$(PackageFolder)')" />
 
     <ItemGroup>
-        <SourceFile Include="$(SourceFolder)\Simple.Logger\Logger.cs" />
-        <SourceFile Include="$(SourceFolder)\Simple.Logger.NLog\NLogWriter.cs" />
-        <SourceFile Include="$(SourceFolder)\Simple.Logger.log4net\Log4NetWriter.cs" />
+        <SourceFile Include="$(SourceFolder)\Simple.Logger\*.cs" />
     </ItemGroup>
     
-    <!-- create secure.config -->
     <Copy SourceFiles="@(SourceFile)"
           DestinationFiles="@(SourceFile->'$(PackageFolder)\%(Filename)%(Extension).pp')" />
 
-    
+    <!-- Appenders-->
+    <MakeDir Directories="$(PackageFolder)\Appenders" Condition="!Exists('$(PackageFolder)\Appenders')" />
+
     <ItemGroup>
-        <UpdateFile Include="$(PackageFolder)\*.pp" />
+      <AppenderFile Include="$(SourceFolder)\Simple.Logger.NLog\NLogWriter.cs" />
+      <AppenderFile Include="$(SourceFolder)\Simple.Logger.log4net\Log4NetWriter.cs" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(AppenderFile)"
+          DestinationFiles="@(AppenderFile->'$(PackageFolder)\Appenders\%(Filename)%(Extension).pp')" />
+
+    <ItemGroup>
+        <UpdateFile Include="$(PackageFolder)\**\*.pp" />
     </ItemGroup>
     
     <!-- replace namespace-->

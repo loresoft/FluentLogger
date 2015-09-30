@@ -16,6 +16,6 @@
     <developmentDependency>true</developmentDependency>
   </metadata>
   <files>
-    <file src="Logging\Logger.cs.pp" target="content\Logging\Logger.cs.pp" />
+    <file src="Logging\*.cs.pp" target="content\Logging\" />
   </files>
 </package>

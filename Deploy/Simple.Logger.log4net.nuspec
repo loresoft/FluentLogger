@@ -16,6 +16,6 @@
     <developmentDependency>true</developmentDependency>
   </metadata>
   <files>
-    <file src="Logging\Log4NetWriter.cs.pp" target="content\Logging\Log4NetWriter.cs.pp" />
+    <file src="Logging\Appenders\Log4NetWriter.cs.pp" target="content\Logging\Log4NetWriter.cs.pp" />
   </files>
 </package>

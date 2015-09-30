@@ -39,8 +39,44 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\Simple.Logger\AsynchronousContext.cs">
+      <Link>AsynchronousContext.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\DisposeAction.cs">
+      <Link>DisposeAction.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\ILogBuilder.cs">
+      <Link>ILogBuilder.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\ILogger.cs">
+      <Link>ILogger.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\ILogWriter.cs">
+      <Link>ILogWriter.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\IPropertyContext.cs">
+      <Link>IPropertyContext.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\LogBuilder.cs">
+      <Link>LogBuilder.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\LogData.cs">
+      <Link>LogData.cs</Link>
+    </Compile>
     <Compile Include="..\Simple.Logger\Logger.cs">
       <Link>Logger.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\LoggerCreateBuilder.cs">
+      <Link>LoggerCreateBuilder.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\LogLevel.cs">
+      <Link>LogLevel.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\PropertyContext.cs">
+      <Link>PropertyContext.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\TraceLogWriter.cs">
+      <Link>TraceLogWriter.cs</Link>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
