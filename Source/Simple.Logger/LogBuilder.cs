@@ -11,7 +11,7 @@ namespace Simple.Logger
     public sealed class LogBuilder : ILogBuilder
     {
         private readonly LogData _data;
-        private readonly Action<LogData> _writer;
+        private readonly ILogWriter _writer;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LogBuilder" /> class.
@@ -19,7 +19,7 @@ namespace Simple.Logger
         /// <param name="logLevel">The starting trace level.</param>
         /// <param name="writer">The delegate to write logs to.</param>
         /// <exception cref="System.ArgumentNullException">writer</exception>
-        public LogBuilder(LogLevel logLevel, Action<LogData> writer)
+        public LogBuilder(LogLevel logLevel, ILogWriter writer)
         {
             if (writer == null)
                 throw new ArgumentNullException("writer");
@@ -27,8 +27,6 @@ namespace Simple.Logger
             _writer = writer;
             _data = new LogData();
             _data.LogLevel = logLevel;
-            _data.FormatProvider = CultureInfo.InvariantCulture;
-            _data.Logger = typeof(Logger).FullName;
         }
 
         /// <summary>
@@ -86,6 +84,12 @@ namespace Simple.Logger
         {
             _data.Message = message;
 
+            return this;
+        }
+
+        public ILogBuilder Message(Func<string> messageFactory)
+        {
+            _data.MessageFormatter = messageFactory;
             return this;
         }
 
@@ -229,7 +233,7 @@ namespace Simple.Logger
             if (callerLineNumber != 0)
                 _data.LineNumber = callerLineNumber;
 
-            _writer(_data);
+            _writer.WriteLog(_data);
         }
 
 

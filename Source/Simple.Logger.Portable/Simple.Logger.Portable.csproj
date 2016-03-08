@@ -42,6 +42,9 @@
     <Compile Include="..\Simple.Logger\AsynchronousContext.cs">
       <Link>AsynchronousContext.cs</Link>
     </Compile>
+    <Compile Include="..\Simple.Logger\DelegateLogWriter.cs">
+      <Link>DelegateLogWriter.cs</Link>
+    </Compile>
     <Compile Include="..\Simple.Logger\DisposeAction.cs">
       <Link>DisposeAction.cs</Link>
     </Compile>
@@ -68,6 +71,9 @@
     </Compile>
     <Compile Include="..\Simple.Logger\LoggerCreateBuilder.cs">
       <Link>LoggerCreateBuilder.cs</Link>
+    </Compile>
+    <Compile Include="..\Simple.Logger\LoggerExtensions.cs">
+      <Link>LoggerExtensions.cs</Link>
     </Compile>
     <Compile Include="..\Simple.Logger\LogLevel.cs">
       <Link>LogLevel.cs</Link>

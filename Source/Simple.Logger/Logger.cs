@@ -12,7 +12,6 @@ namespace Simple.Logger
     /// </summary>
     public sealed class Logger : ILogger
     {
-        private static Action<LogData> _logAction;
         private static ILogWriter _logWriter;
 
         // only create if used
@@ -30,17 +29,14 @@ namespace Simple.Logger
         /// </summary>
         static Logger()
         {
-            _logAction = DebugWrite;
-
             _globalProperties = new Lazy<IPropertyContext>(CreateGlobal);
 #if !PORTABLE
             _threadProperties = new ThreadLocal<IPropertyContext>(CreateLocal);
             _asyncProperties = new Lazy<IPropertyContext>(CreateAsync);
 
             _logWriter = new TraceLogWriter();
-            _logAction = _logWriter.WriteLog;
 #else
-            _logAction = DebugWrite;
+            
 #endif
         }
 
@@ -134,8 +130,7 @@ namespace Simple.Logger
         /// </returns>
         ILogBuilder ILogger.Log(LogLevel logLevel)
         {
-            var builder = Log(logLevel);
-            return MergeDefaults(builder);
+            return CreateBuilder(logLevel);
         }
 
 
@@ -165,8 +160,11 @@ namespace Simple.Logger
         /// </returns>
         ILogBuilder ILogger.Log(Func<LogLevel> logLevelFactory)
         {
-            var builder = Log(logLevelFactory);
-            return MergeDefaults(builder);
+            var logLevel = (logLevelFactory != null)
+                ? logLevelFactory()
+                : LogLevel.Debug;
+
+            return CreateBuilder(logLevel);
         }
 
 
@@ -188,8 +186,7 @@ namespace Simple.Logger
         /// </returns>
         ILogBuilder ILogger.Trace()
         {
-            var builder = Trace();
-            return MergeDefaults(builder);
+            return CreateBuilder(LogLevel.Trace);
         }
 
 
@@ -211,8 +208,7 @@ namespace Simple.Logger
         /// </returns>
         ILogBuilder ILogger.Debug()
         {
-            var builder = Debug();
-            return MergeDefaults(builder);
+            return CreateBuilder(LogLevel.Debug);
         }
 
 
@@ -234,8 +230,7 @@ namespace Simple.Logger
         /// </returns>
         ILogBuilder ILogger.Info()
         {
-            var builder = Info();
-            return MergeDefaults(builder);
+            return CreateBuilder(LogLevel.Info);
         }
 
 
@@ -257,8 +252,7 @@ namespace Simple.Logger
         /// </returns>
         ILogBuilder ILogger.Warn()
         {
-            var builder = Warn();
-            return MergeDefaults(builder);
+            return CreateBuilder(LogLevel.Warn);
         }
 
 
@@ -280,8 +274,7 @@ namespace Simple.Logger
         /// </returns>
         ILogBuilder ILogger.Error()
         {
-            var builder = Error();
-            return MergeDefaults(builder);
+            return CreateBuilder(LogLevel.Error);
         }
 
 
@@ -303,8 +296,7 @@ namespace Simple.Logger
         /// </returns>
         ILogBuilder ILogger.Fatal()
         {
-            var builder = Fatal();
-            return MergeDefaults(builder);
+            return CreateBuilder(LogLevel.Fatal);
         }
 
 
@@ -317,8 +309,8 @@ namespace Simple.Logger
             if (writer == null)
                 throw new ArgumentNullException("writer");
 
-            var current = _logAction;
-            Interlocked.CompareExchange(ref _logAction, writer, current);
+            var logWriter = new DelegateLogWriter(writer);
+            RegisterWriter(logWriter);
         }
 
         /// <summary>
@@ -333,8 +325,6 @@ namespace Simple.Logger
 
             var current = _logWriter;
             Interlocked.CompareExchange(ref _logWriter, writer, current);
-
-            RegisterWriter(_logWriter.WriteLog);
         }
 
 
@@ -383,23 +373,11 @@ namespace Simple.Logger
         }
 
 
-        private static Action<LogData> ResolveWriter()
-        {
-            var writer = _logAction ?? DebugWrite;
-            return writer;
-        }
-
-        private static void DebugWrite(LogData logData)
-        {
-            System.Diagnostics.Debug.WriteLine(logData);
-        }
-
         private static ILogBuilder CreateBuilder(LogLevel logLevel, string callerFilePath)
         {
             string name = GetName(callerFilePath);
 
-            var writer = ResolveWriter();
-            var builder = new LogBuilder(logLevel, writer);
+            var builder = new LogBuilder(logLevel, _logWriter);
             builder.Logger(name);
 
             MergeProperties(builder);
@@ -407,21 +385,45 @@ namespace Simple.Logger
             return builder;
         }
 
-        private static string GetName(string path)
+        private ILogBuilder CreateBuilder(LogLevel logLevel)
+        {
+            var builder = new LogBuilder(logLevel, _logWriter);
+
+            MergeProperties(builder);
+            MergeDefaults(builder);
+
+            return builder;
+        }
+
+
+        public static string GetFileName(string path)
         {
             if (path == null)
-                return string.Empty;
+                return path;
 
-            var parts = path.Split('\\', '/');
-            var p = parts.LastOrDefault();
-            if (p == null)
+            int length = path.Length;
+            for (int i = length; --i >= 0;)
+            {
+                char ch = path[i];
+                if (ch == '\\' || ch == '/' || ch == ':')
+                    return path.Substring(i + 1, length - i - 1);
+
+            }
+
+            return path;
+        }
+
+        public static string GetName(string path)
+        {
+            path = GetFileName(path);
+            if (path == null)
                 return null;
 
-            int length;
-            if ((length = p.LastIndexOf('.')) == -1)
-                return p;
+            int i;
+            if ((i = path.LastIndexOf('.')) != -1)
+                return path.Substring(0, i);
 
-            return p.Substring(0, length);
+            return path;
         }
 
 #if !PORTABLE

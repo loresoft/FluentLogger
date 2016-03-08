@@ -10,7 +10,7 @@ namespace Simple.Logger
     /// </summary>
     public class TraceLogWriter : ILogWriter
     {
-        private readonly static Lazy<TraceSource> _traceSource;
+        private static readonly Lazy<TraceSource> _traceSource;
 
         /// <summary>
         /// Initializes the <see cref="TraceLogWriter"/> class.
@@ -55,5 +55,4 @@ namespace Simple.Logger
         }
     }
 #endif
-
 }

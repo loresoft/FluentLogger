@@ -7,16 +7,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Simple.Logger.Tests
 {
     public class LoggerTest
     {
-        public LoggerTest()
+        public LoggerTest(ITestOutputHelper output)
         {
             Logger.RegisterWriter(d =>
             {
-                Console.WriteLine(d);
+                output.WriteLine(d.ToString());
             });
         }
 
@@ -168,10 +169,14 @@ namespace Simple.Logger.Tests
             int k = 42;
             int l = 100;
 
-            logger.Info()
+            var builder = logger.Info()
                 .Message("Sample informational message with default property, k={0}, l={1}", k, l)
-                .Property("Test", "Tesing properties")
-                .Write();
+                .Property("Test", "Tesing properties");
+
+
+            builder.LogData.Properties.Count.Should().Be(2);
+
+            builder.Write();
 
         }
 
@@ -222,7 +227,5 @@ namespace Simple.Logger.Tests
             var i2 = Logger.AsyncProperties.Get("Inner");
             i2.Should().Be(97);
         }
-
-
     }
 }
