@@ -93,7 +93,7 @@ public bool Run(int jobId)
 Using async properties.
 
 ```csharp
-public async bool Run(int jobId)
+public async Task<bool> Run(int jobId)
 {
     try
     {
@@ -112,12 +112,12 @@ public async bool Run(int jobId)
     }
     finally
     {
-        // clear Job property for this thread
+        // clear Job property for this async context
         Logger.AsyncProperties.Remove("Job");
     }
 }
 
-public async bool DoWork()
+public async Task<bool> DoWork()
 {
     // all log writes on current async context will now include a Job property
     Logger.Trace()
