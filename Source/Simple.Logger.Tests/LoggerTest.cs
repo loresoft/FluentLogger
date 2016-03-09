@@ -212,7 +212,7 @@ namespace Simple.Logger.Tests
 
                 d1 = builder.LogData;
             };
-            await action();
+            await action().ConfigureAwait(false);
 
             // check log data got async property
             d1.Should().NotBeNull();
