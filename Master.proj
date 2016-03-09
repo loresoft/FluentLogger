@@ -53,7 +53,7 @@
     <AssemblyInfo CodeLanguage="CS"
                   OutputFile="$(SourceFolder)\GlobalAssemblyInfo.cs"
                   GenerateClass="true"
-                  AssemblyProduct="Simple.Logger"
+                  AssemblyProduct="Fluent.Logger"
                   AssemblyCompany="LoreSoft"
                   AssemblyCopyright="Copyright © $(Year) LoreSoft"
                   AssemblyConfiguration="$(BuildConfiguration)"
@@ -65,7 +65,7 @@
   </Target>
 
   <Target Name="Compile" DependsOnTargets="Clean;Version">
-    <MSBuild Projects="$(SourceFolder)\Simple.Logger.sln"
+    <MSBuild Projects="$(SourceFolder)\Fluent.Logger.sln"
              Properties="Configuration=$(BuildConfiguration)"/>
   </Target>
   
@@ -81,7 +81,7 @@
     <MakeDir Directories="$(PackageFolder)" Condition="!Exists('$(PackageFolder)')" />
 
     <ItemGroup>
-        <SourceFile Include="$(SourceFolder)\Simple.Logger\*.cs" />
+        <SourceFile Include="$(SourceFolder)\Fluent.Logger\*.cs" />
     </ItemGroup>
     
     <Copy SourceFiles="@(SourceFile)"
@@ -91,9 +91,9 @@
     <MakeDir Directories="$(PackageFolder)\Appenders" Condition="!Exists('$(PackageFolder)\Appenders')" />
 
     <ItemGroup>
-      <AppenderFile Include="$(SourceFolder)\Simple.Logger.NLog\NLogWriter.cs" />
-      <AppenderFile Include="$(SourceFolder)\Simple.Logger.log4net\Log4NetWriter.cs" />
-      <AppenderFile Include="$(SourceFolder)\Simple.Logger.Serilog\SerilogWriter.cs" />
+      <AppenderFile Include="$(SourceFolder)\Fluent.Logger.NLog\NLogWriter.cs" />
+      <AppenderFile Include="$(SourceFolder)\Fluent.Logger.log4net\Log4NetWriter.cs" />
+      <AppenderFile Include="$(SourceFolder)\Fluent.Logger.Serilog\SerilogWriter.cs" />
     </ItemGroup>
 
     <Copy SourceFiles="@(AppenderFile)"
@@ -105,7 +105,7 @@
     
     <!-- replace namespace-->
     <FileUpdate Files="@(UpdateFile)"
-                Regex="namespace Simple.Logger"
+                Regex="namespace Fluent.Logger"
                 ReplacementText="namespace $rootnamespace$.Logging" />
 
     <MakeDir Directories="$(BuildFolder)" Condition="!EXISTS($(BuildFolder))" />
