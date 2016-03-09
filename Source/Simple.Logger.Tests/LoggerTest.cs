@@ -174,7 +174,7 @@ namespace Simple.Logger.Tests
                 .Property("Test", "Tesing properties");
 
 
-            builder.LogData.Properties.Count.Should().Be(2);
+            builder.LogData.Properties.Count.Should().BeGreaterOrEqualTo(2);
 
             builder.Write();
 

@@ -24,7 +24,7 @@
     
     <BuildConfiguration  Condition=" '$(BuildConfiguration)' == '' ">Release</BuildConfiguration>
 
-    <Major Condition=" '$(Major)' == '' ">2</Major>
+    <Major Condition=" '$(Major)' == '' ">3</Major>
     <Minor Condition=" '$(Minor)' == '' ">0</Minor>
     <Patch Condition=" '$(Patch)' == '' ">0</Patch>
 
@@ -93,6 +93,7 @@
     <ItemGroup>
       <AppenderFile Include="$(SourceFolder)\Simple.Logger.NLog\NLogWriter.cs" />
       <AppenderFile Include="$(SourceFolder)\Simple.Logger.log4net\Log4NetWriter.cs" />
+      <AppenderFile Include="$(SourceFolder)\Simple.Logger.Serilog\SerilogWriter.cs" />
     </ItemGroup>
 
     <Copy SourceFiles="@(AppenderFile)"

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
   <metadata>
-    <id>Simple.Logger.log4net</id>
+    <id>Simple.Logger.Serilog</id>
     <version>3.0.0</version>
     <authors>LoreSoft</authors>
     <owners>LoreSoft</owners>
@@ -12,10 +12,10 @@
     <summary>Simple logger abstraction as a NuGet source code package</summary>
     <copyright>Copyright (c) 2016, LoreSoft</copyright>
     <language>en-US</language>
-    <tags>log logging log4net</tags>
+    <tags>log logging Serilog</tags>
     <developmentDependency>true</developmentDependency>
   </metadata>
   <files>
-    <file src="Logging\Appenders\Log4NetWriter.cs.pp" target="content\Logging\Log4NetWriter.cs.pp" />
+    <file src="Logging\Appenders\SerilogWriter.cs.pp" target="content\Logging\SerilogWriter.cs.pp" />
   </files>
 </package>

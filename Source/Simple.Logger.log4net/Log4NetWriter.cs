@@ -5,13 +5,13 @@ namespace Simple.Logger
     /// <summary>
     /// log4net Log adapter
     /// </summary>
-    public static class Log4NetWriter
+    public class Log4NetWriter : ILogWriter
     {
         /// <summary>
         /// Writes the specified LogData to log4net.
         /// </summary>
         /// <param name="logData">The log data.</param>
-        public static void WriteLog(LogData logData)
+        public void WriteLog(LogData logData)
         {
             var name = logData.Logger ?? typeof(Log4NetWriter).FullName;
 
@@ -50,32 +50,30 @@ namespace Simple.Logger
 
         private static void WriteLog(LogData logData, Action<object> logAction, Action<object, Exception> errorAction)
         {
-            bool isFormatted = logData.Parameters != null && logData.Parameters.Length > 0;
-
-            string message = isFormatted
-                ? string.Format(logData.FormatProvider, logData.Message, logData.Parameters)
-                : logData.Message;
-
+            string message = logData.FormatMessage();
 
             if (logData.Exception == null)
                 logAction(message);
             else
                 errorAction(message, logData.Exception);
         }
-    }
 
-    /// <summary>
-    /// log4net Log adapter
-    /// </summary>
-    public class Log4NetAdapter : ILogWriter
-    {
+
+        private static readonly Lazy<Log4NetWriter> _current = new Lazy<Log4NetWriter>(() => new Log4NetWriter());
+
         /// <summary>
-        /// Writes the log.
+        /// Gets the current singleton instance of <see cref="Log4NetWriter"/>.
         /// </summary>
-        /// <param name="logData">The log data.</param>
-        public void WriteLog(LogData logData)
+        /// <value>The current singleton instance.</value>
+        /// <remarks>
+        /// An instance of <see cref="Log4NetWriter"/> wont be created until the very first 
+        /// call to the sealed class. This is a CLR optimization that
+        /// provides a properly lazy-loading singleton. 
+        /// </remarks>
+        public static Log4NetWriter Default
         {
-            Log4NetWriter.WriteLog(logData);
+            get { return _current.Value; }
         }
+
     }
 }

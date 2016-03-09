@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
   <metadata>
     <id>Simple.Logger</id>
-    <version>2.0.0</version>
+    <version>3.0.0</version>
     <authors>LoreSoft</authors>
     <owners>LoreSoft</owners>
     <licenseUrl>https://raw.githubusercontent.com/loresoft/Simple.Logger/master/LICENSE</licenseUrl>
@@ -10,7 +10,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Simple logger abstraction as a NuGet source code package</description>
     <summary>Simple logger abstraction as a NuGet source code package</summary>
-    <copyright>Copyright (c) 2015, LoreSoft</copyright>
+    <copyright>Copyright (c) 2016, LoreSoft</copyright>
     <language>en-US</language>
     <tags>log logging</tags>
     <developmentDependency>true</developmentDependency>

@@ -12,22 +12,34 @@ namespace Simple.Logger
     {
         private readonly LogData _data;
         private readonly ILogWriter _writer;
+        private readonly IObjectPool<LogBuilder> _objectPool;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LogBuilder" /> class.
         /// </summary>
-        /// <param name="logLevel">The starting trace level.</param>
         /// <param name="writer">The delegate to write logs to.</param>
-        /// <exception cref="System.ArgumentNullException">writer</exception>
-        public LogBuilder(LogLevel logLevel, ILogWriter writer)
+        /// <param name="objectPool">The object pool.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="writer" /> is <see langword="null" />.</exception>
+        internal LogBuilder(ILogWriter writer, IObjectPool<LogBuilder> objectPool)
+            : this(writer)
+        {
+           _objectPool = objectPool;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LogBuilder" /> class.
+        /// </summary>
+        /// <param name="writer">The delegate to write logs to.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="writer" /> is <see langword="null" />.</exception>
+        public LogBuilder(ILogWriter writer)
         {
             if (writer == null)
                 throw new ArgumentNullException("writer");
 
             _writer = writer;
             _data = new LogData();
-            _data.LogLevel = logLevel;
         }
+
 
         /// <summary>
         /// Gets the log data that is being built.
@@ -215,6 +227,17 @@ namespace Simple.Logger
             return this;
         }
 
+
+        /// <summary>
+        /// Reset log data to default values.
+        /// </summary>
+        /// <returns></returns>
+        internal ILogBuilder Reset()
+        {
+            _data.Reset();
+            return this;
+        }
+
         /// <summary>
         /// Writes the log event to the underlying logger.
         /// </summary>
@@ -234,6 +257,9 @@ namespace Simple.Logger
                 _data.LineNumber = callerLineNumber;
 
             _writer.WriteLog(_data);
+
+            // return to object pool
+            _objectPool?.Free(this);
         }
 
 
@@ -274,6 +300,5 @@ namespace Simple.Logger
 
             Write(callerMemberName, callerFilePath, callerLineNumber);
         }
-
     }
 }

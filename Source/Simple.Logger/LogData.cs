@@ -179,5 +179,24 @@ namespace Simple.Logger
 
             return message.ToString();
         }
+
+
+        /// <summary>
+        /// Reset all properties back to default.
+        /// </summary>
+        internal void Reset()
+        {
+            Logger = "Logger";
+            LogLevel = LogLevel.Trace;
+            Message = null;
+            Parameters = null;
+            MessageFormatter = null;
+            FormatProvider = CultureInfo.InvariantCulture;
+            Exception = null;
+            MemberName = null;
+            FilePath = null;
+            LineNumber = 0;
+            Properties?.Clear();
+        }
     }
 }

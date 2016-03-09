@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -13,6 +11,8 @@ namespace Simple.Logger
     public sealed class Logger : ILogger
     {
         private static ILogWriter _logWriter;
+
+        private static readonly ObjectPool<LogBuilder> _objectPool;
 
         // only create if used
 #if !PORTABLE
@@ -36,8 +36,9 @@ namespace Simple.Logger
 
             _logWriter = new TraceLogWriter();
 #else
-            
+            _logWriter = new DelegateLogWriter();            
 #endif
+            _objectPool = new ObjectPool<LogBuilder>(() => new LogBuilder(_logWriter, _objectPool), 25);
         }
 
         /// <summary>
@@ -377,8 +378,11 @@ namespace Simple.Logger
         {
             string name = GetName(callerFilePath);
 
-            var builder = new LogBuilder(logLevel, _logWriter);
-            builder.Logger(name);
+            var builder = _objectPool.Allocate();
+            builder
+                .Reset()
+                .Level(logLevel)
+                .Logger(name);
 
             MergeProperties(builder);
 
@@ -387,7 +391,10 @@ namespace Simple.Logger
 
         private ILogBuilder CreateBuilder(LogLevel logLevel)
         {
-            var builder = new LogBuilder(logLevel, _logWriter);
+            var builder = _objectPool.Allocate();
+            builder
+                .Reset()
+                .Level(logLevel);
 
             MergeProperties(builder);
             MergeDefaults(builder);
@@ -396,7 +403,20 @@ namespace Simple.Logger
         }
 
 
-        public static string GetFileName(string path)
+        private static string GetName(string path)
+        {
+            path = GetFileName(path);
+            if (path == null)
+                return null;
+
+            int i;
+            if ((i = path.LastIndexOf('.')) != -1)
+                return path.Substring(0, i);
+
+            return path;
+        }
+
+        private static string GetFileName(string path)
         {
             if (path == null)
                 return path;
@@ -409,19 +429,6 @@ namespace Simple.Logger
                     return path.Substring(i + 1, length - i - 1);
 
             }
-
-            return path;
-        }
-
-        public static string GetName(string path)
-        {
-            path = GetFileName(path);
-            if (path == null)
-                return null;
-
-            int i;
-            if ((i = path.LastIndexOf('.')) != -1)
-                return path.Substring(0, i);
 
             return path;
         }

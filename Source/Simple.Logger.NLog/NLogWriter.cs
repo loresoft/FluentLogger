@@ -35,7 +35,7 @@ namespace Simple.Logger
             logEvent.Exception = logData.Exception;
             logEvent.FormatProvider = logData.FormatProvider;
             logEvent.Parameters = logData.Parameters;
-            logEvent.Message = FormatMEssage(logData);
+            logEvent.Message = FormatMessage(logData);
 
             if (logData.Properties != null)
                 foreach (var property in logData.Properties)
@@ -67,7 +67,8 @@ namespace Simple.Logger
             return global::NLog.LogLevel.Debug;
         }
 
-        private static string FormatMEssage(LogData logData)
+
+        private static string FormatMessage(LogData logData)
         {
             string message = null;
             try
