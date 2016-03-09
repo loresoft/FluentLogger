@@ -51,6 +51,7 @@
     <Compile Include="Logger.cs" />
     <Compile Include="LoggerCreateBuilder.cs" />
     <Compile Include="LoggerExtensions.cs" />
+    <Compile Include="LoggerFactory.cs" />
     <Compile Include="LogLevel.cs" />
     <Compile Include="ObjectPool.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

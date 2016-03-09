@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace Fluent.Logger
 {
+    /// <summary>
+    /// Extension methods for <see cref="ILogger"/>
+    /// </summary>
     public static class LoggerExtensions
     {
         /// <summary>

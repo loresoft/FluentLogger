@@ -77,6 +77,9 @@
     <Compile Include="..\Fluent.Logger\LoggerExtensions.cs">
       <Link>LoggerExtensions.cs</Link>
     </Compile>
+    <Compile Include="..\Fluent.Logger\LoggerFactory.cs">
+      <Link>LoggerFactory.cs</Link>
+    </Compile>
     <Compile Include="..\Fluent.Logger\LogLevel.cs">
       <Link>LogLevel.cs</Link>
     </Compile>

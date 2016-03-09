@@ -99,6 +99,11 @@ namespace Fluent.Logger
             return this;
         }
 
+        /// <summary>
+        /// Sets the log message on the logging event using the return value of specified <see langword="delegate" />.
+        /// </summary>
+        /// <param name="messageFactory">The <see langword="delegate" /> to generate the method.</param>
+        /// <returns></returns>
         public ILogBuilder Message(Func<string> messageFactory)
         {
             _data.MessageFormatter = messageFactory;
