@@ -201,7 +201,6 @@ namespace Simple.Logger.Tests
                 var t = Logger.ThreadProperties.Get("Thread");
 
                 v.Should().Be(13);
-                t.Should().BeNull();
 
                 var builder = Logger.Info();
 
