@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-[assembly: System.Reflection.AssemblyProduct("Fluent.Logger")]
+[assembly: System.Reflection.AssemblyProduct("FluentLogger")]
 [assembly: System.Reflection.AssemblyCompany("LoreSoft")]
 [assembly: System.Reflection.AssemblyCopyright("Copyright © 2016 LoreSoft")]
 [assembly: System.Reflection.AssemblyConfiguration("Release")]
@@ -21,7 +21,7 @@
 
 internal sealed partial class ThisAssembly {
     
-    internal const string AssemblyProduct = "Fluent.Logger";
+    internal const string AssemblyProduct = "FluentLogger";
     
     internal const string AssemblyCompany = "LoreSoft";
     

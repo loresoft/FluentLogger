@@ -1,23 +1,23 @@
-# Fluent.Logger
+# FluentLogger
 
 Simple logger abstraction as a NuGet source code package.
 
 [![Build status](https://ci.appveyor.com/api/projects/status/24o8k3nn3skd3hxc?svg=true)](https://ci.appveyor.com/project/LoreSoft/simple-logger)
 
-[![NuGet Version](https://img.shields.io/nuget/v/Fluent.Logger.svg?style=flat-square)](http://www.nuget.org/packages/Fluent.Logger/)
+[![NuGet Version](https://img.shields.io/nuget/v/FluentLogger.svg?style=flat-square)](http://www.nuget.org/packages/FluentLogger/)
 
-[![NuGet Version](https://img.shields.io/nuget/dt/Fluent.Logger.svg?style=flat-square)](http://www.nuget.org/packages/Fluent.Logger/)
+[![NuGet Version](https://img.shields.io/nuget/dt/FluentLogger.svg?style=flat-square)](http://www.nuget.org/packages/FluentLogger/)
 
 ## Download
 
-The Fluent.Logger library is available on nuget.org via package name `Fluent.Logger`.
+The FluentLogger library is available on nuget.org via package name `FluentLogger`.
 
-To install Fluent.Logger, run the following command in the Package Manager Console
+To install FluentLogger, run the following command in the Package Manager Console
 
-    PM> Install-Package Fluent.Logger
+    PM> Install-Package FluentLogger
     
 More information about NuGet package avaliable at
-<https://nuget.org/packages/Fluent.Logger>
+<https://nuget.org/packages/FluentLogger>
 
 ## Development Builds
 
@@ -94,9 +94,9 @@ Class named logger
 
 ## NLog Integration
 
-To intergrate Fluent.Logger with NLog, install the `Fluent.Logger.NLog` source code nugget package.  
+To intergrate FluentLogger with NLog, install the `FluentLogger.NLog` source code nugget package.  
 
-    PM> Install-Package Fluent.Logger.NLog
+    PM> Install-Package FluentLogger.NLog
 
 Then register the adapter with Logger on application startup as follows.
 
@@ -104,9 +104,9 @@ Then register the adapter with Logger on application startup as follows.
 
 ## log4net Integration
 
-To intergrate Fluent.Logger with log4net, install the `Fluent.Logger.log4net` source code nugget package.  
+To intergrate FluentLogger with log4net, install the `FluentLogger.log4net` source code nugget package.  
 
-    PM> Install-Package Fluent.Logger.log4net
+    PM> Install-Package FluentLogger.log4net
 
 Then register the adapter with Logger on application startup as follows.
 
