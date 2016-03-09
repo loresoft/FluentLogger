@@ -1,6 +1,6 @@
 # FluentLogger
 
-Simple logger abstraction as a NuGet source code package.
+Fluent logger abstraction as a NuGet source code package.
 
 [![Build status](https://ci.appveyor.com/api/projects/status/24o8k3nn3skd3hxc?svg=true)](https://ci.appveyor.com/project/LoreSoft/simple-logger)
 
@@ -31,66 +31,130 @@ In your Package Manager settings add the following package source for developmen
 
 Writing info message via fluent API.
 
-    Logger.Info()
-        .Message("This is a test fluent message '{0}'.", DateTime.Now.Ticks)
-        .Property("Test", "InfoWrite")
-        .Write();
+```csharp
+Logger.Info()
+    .Message("This is a test fluent message '{0}'.", DateTime.Now.Ticks)
+    .Property("Test", "InfoWrite")
+    .Write();
+```
 
 Writing error message.
 
+```csharp
+try
+{
+    string text = File.ReadAllText(path);
+}
+catch (Exception ex)
+{
+    Logger.Error()
+        .Message("Error reading file '{0}'.", path)
+        .Exception(ex)
+        .Property("Test", "ErrorWrite")
+        .Write();
+}
+```
+
+Using thread-local properties.
+
+```csharp
+public bool Run(int jobId)
+{
     try
     {
-        string text = File.ReadAllText(path);
+        Logger.ThreadProperties.Set("Job", jobId);
+
+        // all log writes on current thread will now include a Job property
+        Logger.Trace()
+            .Message("Starting Work ...")
+            .Write();
+
+        // DO WORK
+
+        return true;
     }
     catch (Exception ex)
     {
         Logger.Error()
-            .Message("Error reading file '{0}'.", path)
+            .Message("Error: ", ex.Message)
             .Exception(ex)
-            .Property("Test", "ErrorWrite")
             .Write();
-    }
-    
-Using thread-local properties.
 
-    public bool Run(int jobId)
+        return false;
+    }
+    finally
     {
-        try
-        {
-            Logger.ThreadProperties.Set("Job", jobId);
-
-            // all log writes on current thread will now include a Job property
-            Logger.Trace()
-                .Message("Starting Work ...")
-                .Write();
-
-            // DO WORK
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Logger.Error()
-                .Message("Error: ", ex.Message)
-                .Exception(ex)
-                .Write();
-
-            return false;
-        }
-        finally
-        {
-            // clear Job property for this thread
-            Logger.ThreadProperties.Remove("Job");
-        }
+        // clear Job property for this thread
+        Logger.ThreadProperties.Remove("Job");
     }
+}
+```
+
+Using async properties.
+
+```csharp
+public async bool Run(int jobId)
+{
+    try
+    {
+        Logger.AsyncProperties.Set("Job", jobId);
+
+        return await DoWork();
+    }
+    catch (Exception ex)
+    {
+        Logger.Error()
+            .Message("Error: ", ex.Message)
+            .Exception(ex)
+            .Write();
+
+        return false;
+    }
+    finally
+    {
+        // clear Job property for this thread
+        Logger.AsyncProperties.Remove("Job");
+    }
+}
+
+public async bool DoWork()
+{
+    // all log writes on current async context will now include a Job property
+    Logger.Trace()
+        .Message("Starting Work ...")
+        .Write();
+
+    // DO WORK
+
+    return true;
+}
+```
 
 Class named logger
 
-    public class UserManager
-    {
-        private static readonly ILogger _logger = Logger.CreateLogger<UserManager>();
-    }
+```csharp
+public class UserManager
+{
+    private static readonly ILogger _logger = Logger.CreateLogger<UserManager>();
+}
+```
 
+Dependency inject logger
+
+```csharp
+public class UserRepository 
+{
+    private readonly ILogger _logger;
+
+    public UserRepository(ILoggerFactory<UserRepository> loggerFactory)
+    {
+        _logger = loggerFactory.CreateLogger();
+    }
+}
+
+// example register of open generic for Autofac
+builder.RegisterGeneric(typeof(LoggerFactory<>)).As(typeof(ILoggerFactory<>))
+```
 
 ## NLog Integration
 
@@ -100,7 +164,7 @@ To intergrate FluentLogger with NLog, install the `FluentLogger.NLog` source cod
 
 Then register the adapter with Logger on application startup as follows.
 
-    Logger.RegisterWriter(NLogWriter.WriteLog);
+    Logger.RegisterWriter(NLogWriter.Default);
 
 ## log4net Integration
 
@@ -110,4 +174,4 @@ To intergrate FluentLogger with log4net, install the `FluentLogger.log4net` sour
 
 Then register the adapter with Logger on application startup as follows.
 
-    Logger.RegisterWriter(Log4NetWriter.WriteLog);
+    Logger.RegisterWriter(Log4NetWriter.Default);
