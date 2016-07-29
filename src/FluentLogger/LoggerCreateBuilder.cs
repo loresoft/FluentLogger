@@ -3,7 +3,7 @@ using System;
 namespace FluentLogger
 {
     /// <summary>
-    /// A fluent class to build a <see cref="Logger"/>.
+    /// A fluent class to build a Logger.
     /// </summary>
     public class LoggerCreateBuilder
     {

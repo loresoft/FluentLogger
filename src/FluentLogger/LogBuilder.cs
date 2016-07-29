@@ -34,7 +34,7 @@ namespace FluentLogger
         public LogBuilder(ILogWriter writer)
         {
             if (writer == null)
-                throw new ArgumentNullException("writer");
+                throw new ArgumentNullException(nameof(writer));
 
             _writer = writer;
             _data = new LogData();
