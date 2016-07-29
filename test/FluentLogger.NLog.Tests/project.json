@@ -1,0 +1,32 @@
+﻿{
+  "version": "4.0.0.0",
+  "testRunner": "xunit",
+  "dependencies": {
+    "xunit": "2.2.0-beta2-build3300",
+    "dotnet-test-xunit": "2.2.0-preview2-build1029",
+    "FluentLogger": "4.0.0.0",
+    "FluentAssertions": "4.12.0",
+    "NLog": "4.4.0-betaV15"
+  },
+  "frameworks": {
+    "netcoreapp1.0": {
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "type": "platform",
+          "version": "1.0.0"
+        },
+        "System.Threading.Thread": "4.0.0"
+      },
+      "buildOptions": {
+        "define": [
+          "NETSTANDARD1_6"
+        ]
+      }
+    },
+    "net451": {
+      "dependencies": {
+        "Microsoft.NETCore.Platforms": "1.0.1"
+      }
+    }
+  }
+}

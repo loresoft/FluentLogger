@@ -4,15 +4,11 @@
   <PropertyGroup>
     <BuildFolder>$(MSBuildProjectDirectory)\Build</BuildFolder>
     <ToolFolder>$(MSBuildProjectDirectory)\Tools</ToolFolder>
-    <SourceFolder>$(MSBuildProjectDirectory)\Source</SourceFolder>
-    <DeployFolder>$(MSBuildProjectDirectory)\Deploy</DeployFolder>
-    <PackageFolder>$(DeployFolder)\Logging</PackageFolder>
-
-    <ExcludeFolders>.git;.svn;obj;App_Data;.settings;bower_components;app_data</ExcludeFolders>
-    <ExcludeFiles>*.resx;*.csproj;*.webinfo;*.log;*.txt;*.cs;*.user;*.vspscc;*.md;packages.config;*.cmd</ExcludeFiles>
+    <SourceFolder>$(MSBuildProjectDirectory)\src</SourceFolder>
+    <TestFolder>$(MSBuildProjectDirectory)\test</TestFolder>
+    <PackageFolder>$(BuildFolder)\Logging</PackageFolder>
 
     <MSBuildCommunityTasksPath>$(ToolFolder)\MSBuildTasks\tools</MSBuildCommunityTasksPath>
-    <XUnitTasksPath>$(ToolFolder)\xunit.runner.console\tools</XUnitTasksPath>
   </PropertyGroup>
 
   <Import Project="$(MSBuildCommunityTasksPath)\MSBuild.Community.Tasks.targets"/>
@@ -24,7 +20,7 @@
     
     <BuildConfiguration  Condition=" '$(BuildConfiguration)' == '' ">Release</BuildConfiguration>
 
-    <Major Condition=" '$(Major)' == '' ">3</Major>
+    <Major Condition=" '$(Major)' == '' ">4</Major>
     <Minor Condition=" '$(Minor)' == '' ">0</Minor>
     <Patch Condition=" '$(Patch)' == '' ">0</Patch>
 
@@ -36,9 +32,8 @@
 
 
   <Target Name="Clean">
-    <DeleteTree Directories="**\obj\**;**\bin\**" />
+    <DeleteTree Directories="$(SourceFolder)\**\obj\**;$(SourceFolder)\**\bin\**" />
     <DeleteTree Directories="$(BuildFolder)" ContinueOnError="true" />
-    <DeleteTree Directories="$(PackageFolder)" ContinueOnError="true" />
   </Target>
 
   <Target Name="Version">
@@ -60,24 +55,25 @@
                   AssemblyVersion="$(AssemblyVersion)"
                   AssemblyFileVersion="$(AssemblyFileVersion)"
                   AssemblyInformationalVersion="$(AssemblyInformationalVersion)"
-                  AssemblyTrademark=""
-                  ComVisible="false"/>
+                  AssemblyTrademark=""/>
   </Target>
 
   <Target Name="Compile" DependsOnTargets="Clean;Version">
-    <MSBuild Projects="$(SourceFolder)\FluentLogger.sln"
+    <MSBuild Projects="FluentLogger.sln"
              Properties="Configuration=$(BuildConfiguration)"/>
   </Target>
   
    <Target Name="Test" DependsOnTargets="Compile">
     <ItemGroup>
-      <TestAssemblies Include="$(SourceFolder)\**\*.Tests\bin\$(BuildConfiguration)\*.Tests.dll"/>
+      <TestAssemblies Include="$(TestFolder)\**\project.json"/>
     </ItemGroup>
 
-    <exec Command="$(XUnitTasksPath)\xunit.console.exe &quot;%(TestAssemblies.Identity)&quot; -appveyor"/>
+    <exec Command="dotnet test &quot;%(TestAssemblies.Identity)&quot;"
+          WorkingDirectory="$(TestFolder)\%(TestAssemblies.RecursiveDir)"/>
   </Target>
 
   <Target Name="Package" DependsOnTargets="Test">
+    <MakeDir Directories="$(BuildFolder)" Condition="!EXISTS($(BuildFolder))" />
     <MakeDir Directories="$(PackageFolder)" Condition="!Exists('$(PackageFolder)')" />
 
     <ItemGroup>
@@ -112,7 +108,7 @@
 
     <!-- nuget package -->
     <ItemGroup>
-      <NuGetFiles Include="$(DeployFolder)\*.nuspec"/>
+      <NuGetFiles Include="*.nuspec"/>
     </ItemGroup>
 
     <NuGetPack File="%(NuGetFiles.Identity)"
