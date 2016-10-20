@@ -32,16 +32,18 @@ namespace FluentLogger
         static Logger()
         {
             _globalProperties = new Lazy<IPropertyContext>(CreateGlobal);
+
 #if !PORTABLE
             _threadProperties = new ThreadLocal<IPropertyContext>(CreateLocal);
-#endif
-#if !PORTABLE && !NETSTANDARD1_3 && !NETSTANDARD1_6
-            _asyncProperties = new Lazy<IPropertyContext>(CreateAsync);
-
             _logWriter = new TraceLogWriter();
 #else
             _logWriter = new DelegateLogWriter();            
 #endif
+
+#if !PORTABLE && !NETSTANDARD1_3 && !NETSTANDARD1_5 && !NETSTANDARD1_6
+            _asyncProperties = new Lazy<IPropertyContext>(CreateAsync);
+#endif
+
             _objectPool = new ObjectPool<LogBuilder>(() => new LogBuilder(_logWriter, _objectPool), 25);
         }
 
@@ -314,7 +316,7 @@ namespace FluentLogger
         public static void RegisterWriter(Action<LogData> writer)
         {
             if (writer == null)
-                throw new ArgumentNullException("writer");
+                throw new ArgumentNullException(nameof(writer));
 
             var logWriter = new DelegateLogWriter(writer);
             RegisterWriter(logWriter);
@@ -328,7 +330,7 @@ namespace FluentLogger
             where TWriter : ILogWriter
         {
             if (writer == null)
-                throw new ArgumentNullException("writer");
+                throw new ArgumentNullException(nameof(writer));
 
             if (writer.Equals(_logWriter))
                 return;
@@ -457,7 +459,7 @@ namespace FluentLogger
         }
 #endif
 
-#if !PORTABLE && !NETSTANDARD1_3 && !NETSTANDARD1_6
+#if !PORTABLE && !NETSTANDARD1_3 && !NETSTANDARD1_5 && !NETSTANDARD1_6
         private static IPropertyContext CreateAsync()
         {
             var propertyContext = new AsynchronousContext();

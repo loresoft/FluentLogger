@@ -212,7 +212,7 @@ namespace FluentLogger
         public ILogBuilder Property(string name, object value)
         {
             if (name == null)
-                throw new ArgumentNullException("name");
+                throw new ArgumentNullException(nameof(name));
 
             if (_data.Properties == null)
                 _data.Properties = new Dictionary<string, object>();

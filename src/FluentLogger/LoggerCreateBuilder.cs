@@ -15,6 +15,9 @@ namespace FluentLogger
         /// <param name="logger">The factory.</param>
         public LoggerCreateBuilder(Logger logger)
         {
+            if (logger == null)
+                throw new ArgumentNullException(nameof(logger));
+
             _logger = logger;
         }
 
@@ -50,6 +53,9 @@ namespace FluentLogger
         /// <returns></returns>
         public LoggerCreateBuilder Logger(Type type)
         {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+
             _logger.Name = type.FullName;
 
             return this;
@@ -66,7 +72,7 @@ namespace FluentLogger
         public LoggerCreateBuilder Property(string name, object value)
         {
             if (name == null)
-                throw new ArgumentNullException("name");
+                throw new ArgumentNullException(nameof(name));
 
             _logger.Properties.Set(name, value);
             return this;
