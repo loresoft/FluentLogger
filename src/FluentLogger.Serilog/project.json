@@ -1,11 +1,11 @@
-﻿{
+{
   "version": "4.0.0.0",
   "buildOptions": {
     "xmlDoc": true
   },
   "dependencies": {
-    "Serilog": "2.1.0",
-    "FluentLogger": "4.0.0.0"
+    "FluentLogger": "4.0.0.0",
+    "Serilog": "2.4.0-dev-00730"
   },
   "frameworks": {
     "net45": {
